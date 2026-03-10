@@ -1,0 +1,1877 @@
+COMPLETE TERRAFORM CONFIGURATION
+Generated on: Mon Mar  9 18:05:08 WAT 2026
+================================================================================
+
+ROOT MODULE FILES
+----------------------------------------
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/main.tf
+================================================================================
+
+# vpc module root main.tf
+module "vpc" {
+  source = "./modules/vpc"
+
+  project_name    = var.project_name
+  vpc_cidr        = var.vpc_cidr
+  public_subnets  = var.public_subnets
+  private_subnets = var.private_subnets
+  azs             = var.azs
+}
+
+# security module root main.tf
+module "security" {
+  source = "./modules/security"
+
+  vpc_id                = module.vpc.vpc_id
+  project_name          = var.project_name
+  raw_bucket_name       = var.raw_images_bucket_name
+  processed_bucket_name = var.processed_images_bucket_name
+}
+
+
+
+# s3 module root main.tf
+module "s3" {
+  source = "./modules/s3"
+
+  project_name                 = var.project_name
+  raw_bucket_name              = var.raw_images_bucket_name
+  processed_images_bucket_name = var.processed_images_bucket_name
+  app_role_arn                 = module.security.app_role_arn
+}
+
+# alb module root main.tf
+module "alb" {
+  source = "./modules/alb"
+
+  name              = "${var.project_name}-alb"
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnet_ids
+  alb_sg_id         = module.security.alb_sg_id
+}
+
+# web module root main.tf
+module "web" {
+  source = "./modules/web"
+
+  ami_id            = var.ami_id
+  instance_type     = var.web_instance_type
+  public_subnet_ids = module.vpc.public_subnet_ids
+  web_sg_id         = module.security.web_sg_id
+  target_group_arn  = module.alb.target_group_arn
+}
+
+# app module root main.tf
+module "app" {
+  source = "./modules/app"
+
+  ami_id                = var.ami_id
+  instance_type         = var.app_instance_type
+  private_subnet_ids    = module.vpc.private_subnet_ids
+  app_sg_id             = module.security.app_sg_id
+  raw_bucket_name       = var.raw_images_bucket_name
+  processed_bucket_name = var.processed_images_bucket_name
+  app_instance_profile  = module.security.app_instance_profile_name
+}
+
+# main.tf - Add monitoring module at the end
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  alb_arn_suffix = module.alb.alb_arn_suffix # You'll need to add this output to alb module
+  web_asg_name   = module.web.web_asg_name
+  app_asg_name   = module.app.app_asg_name
+}
+
+
+
+
+
+
+
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/outputs.tf
+================================================================================
+
+output "raw_bucket_arn" {
+  value = module.s3.raw_bucket_arn
+}
+
+output "processed_bucket_arn" {
+  value = module.s3.processed_bucket_arn
+}
+
+output "kms_key_arn" {
+  value = module.s3.kms_key_arn
+}
+
+output "alb_dns_name" {
+  value = module.alb.alb_dns_name
+}
+
+output "web_asg_name" {
+  value = module.web.web_asg_name # Fixed: module.web, not module.web_asg
+}
+
+output "app_asg_name" {
+  value = module.app.app_asg_name # Fixed: module.app, not module.app_asg
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/providers.tf
+================================================================================
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+  }
+}
+
+# Configure the AWS Provider
+provider "aws" {
+  region  = "eu-north-1"
+  profile = "cloudreality"
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/variables.tf
+================================================================================
+
+# root module variables.tf
+variable "project_name" {
+  description = "The name of the project"
+  type        = string
+}
+variable "environment" {
+  description = "The environment name"
+  type        = string
+}
+variable "aws_region" {
+  description = "The AWS region"
+  type        = string
+}
+
+variable "vpc_cidr" {
+  description = "The CIDR block for the VPC"
+  type        = string
+}
+variable "azs" {
+  description = "The availability zones"
+  type        = list(string)
+}
+variable "public_subnets" {
+  description = "The public subnets"
+  type        = list(string)
+}
+variable "private_subnets" {
+  description = "The private subnets"
+  type        = list(string)
+}
+
+variable "raw_images_bucket_name" {
+  description = "The name of the raw images S3 bucket"
+  type        = string
+}
+variable "processed_images_bucket_name" {
+  description = "The name of the processed images S3 bucket"
+  type        = string
+}
+variable "web_instance_type" {
+  description = "The instance type for web tier EC2 instances"
+  type        = string
+}
+variable "app_instance_type" {
+  description = "The instance type for app tier EC2 instances"
+  type        = string
+}
+
+variable "web_port" {
+  description = "The port for the web tier"
+  type        = number
+}
+
+variable "app_port" {
+  description = "The port for the app tier"
+  type        = number
+}
+
+variable "key_pair_name" {
+  description = "The name of the EC2 key pair"
+  type        = string
+}
+
+variable "web_desired_capacity" {
+  description = "The desired capacity for the web tier ASG"
+  type        = number
+}
+
+variable "web_min_size" {
+  description = "The minimum size for the web tier ASG"
+  type        = number
+}
+
+variable "web_max_size" {
+  description = "The maximum size for the web tier ASG"
+  type        = number
+}
+
+variable "app_max_size" {
+  description = "The maximum size for the app tier ASG"
+  type        = number
+}
+
+variable "enable_cloudwatch_logs" {
+  description = "To enable cloudwatch_logs"
+  type        = bool
+}
+
+variable "app_min_size" {
+  description = "The app min size"
+  type        = number
+}
+
+
+variable "app_desired_capacity" {
+  description = "The desired app capacity"
+  type        = number
+}
+
+variable "ami_id" {
+  description = "The AMI ID for the EC2 instances"
+  type        = string
+}
+
+
+
+
+
+
+
+
+
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/terraform.tfvars
+================================================================================
+
+############################
+# Global / Project Settings
+############################
+
+project_name = "hsbc-gamma-dev"
+environment  = "dev"
+aws_region   = "eu-north-1"
+
+
+############################
+# Networking (VPC)
+############################
+
+vpc_cidr = "10.0.0.0/16"
+
+azs = [
+  "eu-north-1a",
+  "eu-north-1b"
+]
+
+public_subnets = [
+  "10.0.1.0/24",
+  "10.0.2.0/24"
+]
+
+private_subnets = [
+  "10.0.3.0/24",
+  "10.0.4.0/24"
+]
+
+
+############################
+# Application Ports
+############################
+
+web_port = 80
+app_port = 5000
+
+
+############################
+# S3 Buckets (Used by IAM)
+############################
+
+raw_images_bucket_name       = "hsbc-gamma-dev-raw-images"
+processed_images_bucket_name = "hsbc-gamma-dev-processed-images"
+
+
+############################
+# EC2 Configuration (Future)
+############################
+
+web_instance_type = "t3.micro"
+app_instance_type = "t3.micro"
+
+key_pair_name = "hsbc-gamma-dev-key"
+
+
+############################
+# Auto Scaling (Optional)
+############################
+
+web_desired_capacity = 2
+web_min_size         = 1
+web_max_size         = 3
+
+app_desired_capacity = 2
+app_min_size         = 1
+app_max_size         = 3
+
+
+############################
+# Logging & Monitoring
+############################
+
+enable_cloudwatch_logs = true
+
+############################
+# AMI Configuration (Future)
+ami_id = "ami-0aaa636894689fa47" # Amazon Linux 3 AMI (HVM), SSD Volume Type - us-east-1
+############################
+
+
+
+================================================================================
+MODULE: vpc
+================================================================================
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/main.tf
+================================================================================
+
+# create a vpc
+resource "aws_vpc" "cloudreality-vpc" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "${var.project_name}-vpc"
+  }
+}
+
+# create an igw
+resource "aws_internet_gateway" "cloudreality-vpc" {
+  vpc_id = aws_vpc.cloudreality-vpc.id
+
+  tags = {
+    Name = "${var.project_name}-igw"
+  }
+}
+
+# create public subnet
+resource "aws_subnet" "public-subnet" {
+  count                   = length(var.public_subnets)
+  vpc_id                  = aws_vpc.cloudreality-vpc.id
+  cidr_block              = var.public_subnets[count.index]
+  availability_zone       = var.azs[count.index]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.project_name}-public-subnet-${count.index + 1}"
+  }
+}
+# create public route table
+resource "aws_route_table" "public-rt" {
+  vpc_id = aws_vpc.cloudreality-vpc.id
+
+  tags = {
+    Name = "${var.project_name}-public-rt"
+  }
+}
+
+# associate public subnet with route table
+resource "aws_route_table_association" "public-rt-assoc" {
+  count          = length(aws_subnet.public-subnet)
+  subnet_id      = aws_subnet.public-subnet[count.index].id
+  route_table_id = aws_route_table.public-rt.id
+}
+
+# create route to igw in public route table
+resource "aws_route" "public-route" {
+  route_table_id         = aws_route_table.public-rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.cloudreality-vpc.id
+} 
+
+# create private subnet
+resource "aws_subnet" "private-subnet" {
+  count             = length(var.private_subnets)
+  vpc_id            = aws_vpc.cloudreality-vpc.id
+  cidr_block        = var.private_subnets[count.index]
+  availability_zone = var.azs[count.index]
+
+  tags = {
+    Name = "${var.project_name}-private-subnet-${count.index + 1}"
+  }
+}
+
+# create private route table
+resource "aws_route_table" "private-rt" {
+  vpc_id = aws_vpc.cloudreality-vpc.id
+
+  tags = {
+    Name = "${var.project_name}-private-rt"
+  }
+}
+
+# associate private subnet with route table
+resource "aws_route_table_association" "private-rt-assoc" {
+  count          = length(aws_subnet.private-subnet)
+  subnet_id      = aws_subnet.private-subnet[count.index].id
+  route_table_id = aws_route_table.private-rt.id
+}
+
+# Note: No routes to IGW in private route table
+# Private subnets do not have direct internet access
+
+# create nat gateway 
+resource "aws_eip" "nat-eip" {
+domain = "vpc"
+
+  tags = {
+    Name = "${var.project_name}-nat-eip"
+  }
+} 
+
+resource "aws_nat_gateway" "nat-gateway" {
+  allocation_id = aws_eip.nat-eip.id
+  subnet_id     = aws_subnet.public-subnet[0].id
+
+  tags = {
+    Name = "${var.project_name}-nat-gateway"
+  }
+}
+
+
+# create route to nat gateway in private route table
+resource "aws_route" "private-route" {
+  route_table_id         = aws_route_table.private-rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat-gateway.id
+} 
+
+
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/outputs.tf
+================================================================================
+
+# output for VPC ID
+output "vpc_id" {
+  value = aws_vpc.cloudreality-vpc.id
+}
+
+# output for public subnet IDs
+output "public_subnet_ids" {
+  value = aws_subnet.public-subnet[*].id
+}
+
+# output for private subnet IDs
+output "private_subnet_ids" {
+  value = aws_subnet.private-subnet[*].id
+}
+
+# output for internet gateway ID
+output "internet_gateway_id" {
+  value = aws_internet_gateway.cloudreality-vpc.id
+}
+
+# output for public route table ID
+output "public_route_table_id" {
+  value = aws_route_table.public-rt.id
+}
+
+# output for private route table ID
+output "private_route_table_id" {
+  value = aws_route_table.private-rt.id
+} 
+
+# output for public subnet CIDRs
+output "public_subnet_cidrs" {
+  value = var.public_subnets
+}
+
+# output for private subnet CIDRs
+output "private_subnet_cidrs" {
+  value = var.private_subnets
+}
+
+# output for availability zones
+output "availability_zones" {
+  value = var.azs
+}
+
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/variables.tf
+================================================================================
+
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC"
+  type        = string
+}
+
+variable "public_subnets" {
+  description = "Public subnet CIDRs"
+  type        = list(string)
+}
+
+variable "private_subnets" {
+  description = "Private subnet CIDRs"
+  type        = list(string)
+}
+
+variable "azs" {
+  description = "Availability Zones"
+  type        = list(string)
+}
+
+variable "project_name" {
+  type = string
+}
+
+
+
+
+
+================================================================================
+MODULE: security
+================================================================================
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/iam.tf
+================================================================================
+
+# assume role for iam
+data "aws_iam_policy_document" "ec2_assume_role" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+# web tier role
+resource "aws_iam_role" "web_role" {
+  name               = "${var.project_name}-web-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
+
+  tags = {
+    Name = "${var.project_name}-web-role"
+  }
+}
+
+# Attach CloudWatch policy to web role
+resource "aws_iam_role_policy_attachment" "web_logs" {
+  role       = aws_iam_role.web_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+# app tier role
+resource "aws_iam_role" "app_role" {
+  name               = "${var.project_name}-app-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
+
+  tags = {
+    Name = "${var.project_name}-app-role"
+  }
+}
+
+# Attach CloudWatch policy to app role
+resource "aws_iam_role_policy_attachment" "app_logs" {
+  role       = aws_iam_role.app_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+# s3 access policy for app role
+data "aws_iam_policy_document" "app_s3_policy" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:ListBucket"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${var.raw_bucket_name}",
+      "arn:aws:s3:::${var.raw_bucket_name}/*",
+      "arn:aws:s3:::${var.processed_bucket_name}",
+      "arn:aws:s3:::${var.processed_bucket_name}/*"
+    ]
+  }
+
+  # ADD THIS STATEMENT for KMS permissions
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+      "kms:Encrypt"
+    ]
+
+    resources = [
+      "arn:aws:kms:eu-north-1:${data.aws_caller_identity.current.account_id}:key/*"
+    ]
+  }
+}
+
+# You'll also need to add this data source at the top of the file
+data "aws_caller_identity" "current" {}
+
+# Attach S3 policy to app role
+resource "aws_iam_role_policy_attachment" "app_s3_attach" {
+  role       = aws_iam_role.app_role.name
+  policy_arn = aws_iam_policy.app_s3_policy.arn
+}
+
+# ec2 instance profiles
+resource "aws_iam_instance_profile" "web_profile" {
+  name = "${var.project_name}-web-instance-profile"
+  role = aws_iam_role.web_role.name
+
+  tags = {
+    Name = "${var.project_name}-web-instance-profile"
+  }
+}
+
+resource "aws_iam_instance_profile" "app_profile" {
+  name = "${var.project_name}-app-instance-profile"
+  role = aws_iam_role.app_role.name
+
+  tags = {
+    Name = "${var.project_name}-app-instance-profile"
+  }
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/outputs.tf
+================================================================================
+
+output "alb_sg_id" {
+  description = "The ID of the ALB security group"
+  value       = aws_security_group.alb_sg.id
+}
+
+output "web_sg_id" {
+  description = "The ID of the web tier security group"
+  value       = aws_security_group.web_sg.id  # Changed from ec2_sg to web_sg
+}
+
+output "app_sg_id" {
+  description = "The ID of the app tier security group"
+  value       = aws_security_group.app_sg.id
+}
+
+output "web_instance_profile_name" {
+  description = "The name of the web tier instance profile"
+  value       = aws_iam_instance_profile.web_profile.name
+}
+
+output "app_instance_profile_name" {
+  description = "The name of the app tier instance profile"
+  value       = aws_iam_instance_profile.app_profile.name
+}
+
+output "app_role_arn" {
+  description = "app role arn"
+  value       = aws_iam_role.app_role.arn
+}
+
+output "web_role_name" {
+  description = "web role name"
+  value       = aws_iam_role.web_role.name
+}
+
+output "app_role_name" {
+  description = "app role name"
+  value       = aws_iam_role.app_role.name
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/sg.tf
+================================================================================
+
+# create security group for alb
+resource "aws_security_group" "alb_sg" {
+  name        = "${var.project_name}-alb-sg"
+  description = "Security group for ALB"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-alb-sg"
+  }
+}
+
+# create security group for web tier instances
+resource "aws_security_group" "web_sg" {  # Renamed from ec2_sg to web_sg for consistency
+  name        = "${var.project_name}-web-sg"
+  description = "Security group for web tier EC2 instances"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-web-sg"
+  }
+}
+
+
+# create security group for app tier
+resource "aws_security_group" "app_sg" {
+  name        = "${var.project_name}-app-sg"
+  description = "Security group for app tier"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port       = 5000
+    to_port         = 5000
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.web_sg.id,
+      aws_security_group.alb_sg.id  # ADD THIS LINE to allow ALB traffic
+    ]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.project_name}-app-sg"
+  }
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/variables.tf
+================================================================================
+
+variable "vpc_id" {
+  description = "VPC ID where security groups will be created"
+  type        = string
+}
+
+variable "project_name" {
+  description = "Project name for tagging"
+  type        = string
+  default     = "hsbc-gamma-dev"
+}
+
+variable "raw_bucket_name" {
+  description = "Raw images bucket name"
+  type        = string
+}
+
+variable "processed_bucket_name" {
+  description = "Processed images bucket name"
+  type        = string
+}
+
+
+
+
+
+================================================================================
+MODULE: s3
+================================================================================
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/buckets.tf
+================================================================================
+
+# S3 Buckets for raw and processed images
+resource "aws_s3_bucket" "processed" {
+  bucket = var.processed_images_bucket_name
+
+  tags = {
+    Name = "${var.project_name}-processed-images"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "processed" {
+  bucket = aws_s3_bucket.processed.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3_kms.arn
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "raw" {
+  bucket                  = aws_s3_bucket.raw.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_public_access_block" "processed" {
+  bucket                  = aws_s3_bucket.processed.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+
+
+
+
+
+
+
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/kms.tf
+================================================================================
+
+# KMS Key for S3 Buckets
+resource "aws_kms_key" "s3_kms" {
+  description             = "KMS key for S3 image buckets"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "s3_kms_alias" {
+  name          = "alias/${var.project_name}-s3"
+  target_key_id = aws_kms_key.s3_kms.key_id
+}
+
+# raw images bucket
+resource "aws_s3_bucket" "raw" {
+  bucket = var.raw_bucket_name
+
+  tags = {
+    Name = "${var.project_name}-raw-images"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "raw" {
+  bucket = aws_s3_bucket.raw.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3_kms.arn
+    }
+  }
+}
+
+
+# s3 access policy for app role
+data "aws_iam_policy_document" "app_s3_policy" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:ListBucket"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${var.raw_bucket_name}",
+      "arn:aws:s3:::${var.raw_bucket_name}/*",
+      "arn:aws:s3:::${var.processed_bucket_name}",
+      "arn:aws:s3:::${var.processed_bucket_name}/*"
+    ]
+  }
+
+  # More specific KMS permissions using the key ARN from the s3 module
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+      "kms:Encrypt"
+    ]
+
+    resources = [
+      module.s3.kms_key_arn  # This will need to be passed as a variable
+    ]
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/lifecycle.tf
+================================================================================
+
+# create lifecycle rule for raw bucket
+resource "aws_s3_bucket_lifecycle_configuration" "raw" {
+  bucket = aws_s3_bucket.raw.id
+
+  rule {
+    id     = "raw-images-expiry"
+    status = "Enabled"
+
+    expiration {
+      days = 30
+    }
+  }
+}
+
+# create lifecycle rule for processed bucket
+resource "aws_s3_bucket_lifecycle_configuration" "processed" {
+  bucket = aws_s3_bucket.processed.id
+
+  rule {
+    id     = "processed-images-transition"
+    status = "Enabled"
+
+    transition {
+      days          = 60
+      storage_class = "STANDARD_IA"
+    }
+  }
+}
+
+# bucket policy (app tier needs access to both buckets)
+data "aws_iam_policy_document" "raw_bucket_policy" {
+
+  # Bucket-level permissions
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [var.app_role_arn]
+    }
+
+    actions = [
+      "s3:ListBucket"
+    ]
+
+    resources = [
+      aws_s3_bucket.raw.arn
+    ]
+  }
+
+  # Object-level permissions
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [var.app_role_arn]
+    }
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.raw.arn}/*"
+    ]
+  }
+}
+
+resource "aws_s3_bucket_policy" "raw_policy" {
+  bucket = aws_s3_bucket.raw.id
+  policy = data.aws_iam_policy_document.raw_bucket_policy.json
+}
+
+# bucket policy for processed bucket
+data "aws_iam_policy_document" "processed_bucket_policy" {
+
+  # Bucket-level permissions
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [var.app_role_arn]
+    }
+
+    actions = [
+      "s3:ListBucket"
+    ]
+
+    resources = [
+      aws_s3_bucket.processed.arn
+    ]
+  }
+
+  # Object-level permissions
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [var.app_role_arn]
+    }
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject"
+    ]
+
+    resources = [
+      "${aws_s3_bucket.processed.arn}/*"
+    ]
+  }
+}
+
+
+resource "aws_s3_bucket_policy" "processed_policy" {
+  bucket = aws_s3_bucket.processed.id
+  policy = data.aws_iam_policy_document.processed_bucket_policy.json
+}
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/outputs.tf
+================================================================================
+
+output "raw_bucket_arn" {
+  value = aws_s3_bucket.raw.arn
+}
+
+output "processed_bucket_arn" {
+  value = aws_s3_bucket.processed.arn
+}
+
+output "kms_key_arn" {
+  value = aws_kms_key.s3_kms.arn
+}
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/variables.tf
+================================================================================
+
+variable "project_name" {
+  type = string
+}
+
+variable "raw_bucket_name" {
+  type = string
+}
+
+variable "processed_images_bucket_name" {
+  type = string
+}
+
+variable "app_role_arn" {
+  type = string
+}
+
+variable "processed_bucket_name" {
+  type = string
+}
+
+
+
+
+================================================================================
+MODULE: alb
+================================================================================
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/main.tf
+================================================================================
+
+resource "aws_lb" "this" {
+  name               = var.name
+  load_balancer_type = "application"
+  internal           = false
+  security_groups    = [var.alb_sg_id]
+  subnets            = var.public_subnet_ids
+
+  tags = {
+    Name = var.name
+  }
+}
+
+resource "aws_lb_target_group" "web_tg" {
+  name     = "${var.name}-tg"
+  port     = 80
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+  target_type = "instance"
+
+  health_check {
+    path = "/"
+    protocol = "HTTP"
+  }
+}
+
+# NEW: App target group for port 5000
+resource "aws_lb_target_group" "app_tg" {
+  name     = "${var.name}-app-tg"
+  port     = 5000
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+  target_type = "instance"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    timeout             = 5
+    interval            = 30
+    path                = "/health"
+    port                = "5000"
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+
+  tags = {
+    Name = "${var.name}-app-tg"
+  }
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web_tg.arn
+  }
+}
+
+# NEW: Listener rule for app paths
+resource "aws_lb_listener_rule" "app_rule" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/upload*", "/health*"]
+    }
+  }
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/outputs.tf
+================================================================================
+
+output "alb_dns_name" {
+  value = aws_lb.this.dns_name
+}
+
+output "target_group_arn" {
+  value = aws_lb_target_group.web_tg.arn
+}
+
+output "app_target_group_arn" {
+  value = aws_lb_target_group.app_tg.arn
+}
+
+output "alb_arn_suffix" {
+  value = aws_lb.this.arn_suffix
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/variables.tf
+================================================================================
+
+variable "name" {
+    description = "The name of the ALB"
+    type = string
+}
+
+variable "vpc_id" {
+    description = "The ID of the VPC where the ALB will be deployed"
+    type = string       
+}
+
+variable "public_subnet_ids" {
+    default = [ "value" ]
+  type = list(string)
+}
+
+variable "alb_sg_id" {
+    description = "The ID of the security group for the ALB"
+  type = string
+}
+
+
+
+
+
+================================================================================
+MODULE: web
+================================================================================
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/asg.tf
+================================================================================
+
+resource "aws_autoscaling_group" "web_asg" {
+  name                = "web-asg"
+  min_size            = 2
+  max_size            = 4
+  desired_capacity    = 2
+  vpc_zone_identifier = var.public_subnet_ids  # Changed from var.aws_vpc.cloudreality-vpc.id
+
+  target_group_arns = [var.target_group_arn]
+
+  launch_template {
+    id      = aws_launch_template.web_lt.id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "web-asg-instance"
+    propagate_at_launch = true
+  }
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/launch_template.tf
+================================================================================
+
+resource "aws_launch_template" "web_lt" {
+  name_prefix   = "web-lt-"
+  image_id      = var.ami_id
+  instance_type = var.instance_type
+
+  vpc_security_group_ids = [var.web_sg_id]
+
+  user_data = base64encode(file("${path.module}/user_data.sh"))
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "web-tier"
+    }
+  }
+}
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/output.tf
+================================================================================
+
+output "web_asg_name" {
+  value = aws_autoscaling_group.web_asg.name
+}
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/variables.tf
+================================================================================
+
+variable "ami_id" {
+    description = "ami id"
+    type = string
+}
+
+variable "instance_type" {
+    description = "instance type"
+    type = string
+    default = "t3.micro"
+
+}
+variable "public_subnet_ids" {
+  type        = list(string)
+  description = "list of public subnet ids"
+}
+
+variable "web_sg_id" {
+  description = "web security group id"
+  type = string
+}
+
+variable "target_group_arn" {
+  description = "target group arn"
+  type = string
+}
+
+
+
+
+
+----------------------------------------
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/user_data.sh
+----------------------------------------
+
+#!/bin/bash
+yum update -y
+yum install -y httpd
+systemctl start httpd
+systemctl enable httpd
+
+echo "<h1>Web Tier - $(hostname)</h1>" > /var/www/html/index.html
+
+
+
+================================================================================
+MODULE: app
+================================================================================
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/asg.tf
+================================================================================
+
+resource "aws_autoscaling_group" "app_asg" {
+  name                = "app-asg"
+  min_size            = 2
+  max_size            = 4
+  desired_capacity    = 2
+
+  vpc_zone_identifier = var.private_subnet_ids
+  
+  # NEW: Add target group attachment
+  target_group_arns = [var.target_group_arn]
+
+  launch_template {
+    id      = aws_launch_template.app_lt.id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "app-asg-instance"
+    propagate_at_launch = true
+  }
+}
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/launch_template.tf
+================================================================================
+
+resource "aws_launch_template" "app_lt" {
+  name_prefix   = "app-lt-"
+  image_id      = var.ami_id
+  instance_type = var.instance_type
+
+  vpc_security_group_ids = [var.app_sg_id]
+
+  iam_instance_profile {
+    name = var.app_instance_profile
+  }
+
+  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+    RAW_BUCKET       = var.raw_bucket_name
+    PROCESSED_BUCKET = var.processed_bucket_name
+  }))
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "app-tier"
+    }
+  }
+}
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/outputs.tf
+================================================================================
+
+output "app_asg_name" {
+  value = aws_autoscaling_group.app_asg.name
+}
+
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/variables.tf
+================================================================================
+
+variable "ami_id" {
+  type        = string
+  description = "ami id"
+}
+
+variable "instance_type" {
+  type        = string
+  description = "instance type"
+}
+
+variable "private_subnet_ids" {
+  type        = list(string)
+  description = "list of private subnet ids"
+}
+
+variable "app_sg_id" {
+  type        = string
+  description = "app security group id"
+}
+
+variable "raw_bucket_name" {
+  type        = string
+  description = "raw s3 bucket name"
+}
+
+variable "processed_bucket_name" {
+  type        = string
+  description = "processed s3 bucket name"
+}
+
+variable "app_instance_profile" {
+  type        = string
+  description = "app instance profile name"
+}
+
+# NEW: Add target group ARN variable
+variable "target_group_arn" {
+  description = "ARN of the app target group"
+  type        = string
+}
+
+
+----------------------------------------
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/user_data.sh
+----------------------------------------
+
+#!/bin/bash
+set -x  # Print commands for debugging
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+echo "Starting app tier user data script at $(date)"
+
+# Update and install dependencies
+yum update -y
+yum install -y python3 pip
+
+# Install Python packages
+pip3 install flask pillow boto3
+
+# Create the Flask app with health check
+cat << 'EOF' > /home/ec2-user/app.py
+from flask import Flask, request, jsonify
+from PIL import Image
+import boto3
+import os
+import uuid
+import logging
+import socket
+import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+
+# Get bucket names from environment variables
+RAW_BUCKET = os.environ.get('RAW_BUCKET', 'hsbc-gamma-dev-raw-images')
+PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', 'hsbc-gamma-dev-processed-images')
+
+# Initialize S3 client
+try:
+    s3 = boto3.client('s3', region_name='eu-north-1')
+    logger.info("S3 client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize S3 client: {str(e)}")
+    s3 = None
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint for load balancer"""
+    health_status = {
+        'status': 'healthy',
+        'hostname': socket.gethostname(),
+        'private_ip': socket.gethostbyname(socket.gethostname()),
+        'timestamp': time.time(),
+        's3_status': 'connected' if s3 else 'disconnected'
+    }
+    return jsonify(health_status), 200
+
+@app.route('/', methods=['GET'])
+def root():
+    return jsonify({
+        'service': 'app-tier',
+        'hostname': socket.gethostname(),
+        'private_ip': socket.gethostbyname(socket.gethostname()),
+        'endpoints': {
+            '/': 'GET - This info',
+            '/health': 'GET - Health check',
+            '/upload': 'POST - Upload image for processing'
+        }
+    }), 200
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    try:
+        logger.info('Received upload request')
+        
+        if not s3:
+            return jsonify({'error': 'S3 client not initialized'}), 500
+        
+        if 'image' not in request.files:
+            logger.error('No image file in request')
+            return jsonify({'error': 'No image file provided'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            logger.error('Empty filename')
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Generate unique filename
+        filename = f"{uuid.uuid4()}-{file.filename}"
+        logger.info(f'Processing file: {filename}')
+        
+        # Save temporarily
+        temp_path = f'/tmp/{filename}'
+        file.save(temp_path)
+        logger.info(f'Saved to {temp_path}')
+        
+        # Upload original to raw bucket
+        try:
+            s3.upload_file(temp_path, RAW_BUCKET, filename)
+            logger.info(f'Uploaded to raw bucket: {filename}')
+        except Exception as e:
+            logger.error(f'Failed to upload to raw bucket: {str(e)}')
+            return jsonify({'error': f'Failed to upload to raw bucket: {str(e)}'}), 500
+        
+        # Process image
+        try:
+            img = Image.open(temp_path)
+            sizes = {
+                'thumb': (150, 150),
+                'medium': (500, 500)
+            }
+            
+            for name, size in sizes.items():
+                logger.info(f'Creating {name} size')
+                img_resized = img.resize(size)
+                resized_path = f'/tmp/{name}-{filename}'
+                img_resized.save(resized_path)
+                
+                # Upload resized image
+                s3.upload_file(resized_path, PROCESSED_BUCKET, f'{name}-{filename}')
+                os.remove(resized_path)
+                logger.info(f'Uploaded {name} to processed bucket')
+        except Exception as e:
+            logger.error(f'Failed to process image: {str(e)}')
+            return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
+        
+        # Clean up
+        os.remove(temp_path)
+        logger.info('Processing complete')
+        
+        return jsonify({
+            'message': 'Image processed successfully',
+            'filename': filename,
+            'sizes': list(sizes.keys())
+        }), 200
+        
+    except Exception as e:
+        logger.error(f'Error processing image: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    logger.info(f'Starting Flask app on port 5000')
+    logger.info(f'Raw bucket: {RAW_BUCKET}')
+    logger.info(f'Processed bucket: {PROCESSED_BUCKET}')
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+EOF
+
+# Set permissions
+chown ec2-user:ec2-user /home/ec2-user/app.py
+chmod 755 /home/ec2-user/app.py
+
+# Set environment variables
+export RAW_BUCKET=hsbc-gamma-dev-raw-images
+export PROCESSED_BUCKET=hsbc-gamma-dev-processed-images
+
+# Kill any existing Flask processes
+pkill -f "python3 /home/ec2-user/app.py" || true
+
+# Start the Flask app with nohup
+cd /home/ec2-user
+nohup python3 /home/ec2-user/app.py > /home/ec2-user/app.log 2>&1 &
+
+# Wait for app to start
+sleep 5
+
+# Check if app is running
+if pgrep -f "python3 /home/ec2-user/app.py" > /dev/null; then
+    echo "Flask app started successfully"
+    echo "App logs:"
+    tail -n 20 /home/ec2-user/app.log
+else
+    echo "Failed to start Flask app"
+    echo "Last 50 lines of app.log:"
+    tail -n 50 /home/ec2-user/app.log
+fi
+
+echo "App tier user data script completed at $(date)"
+
+
+================================================================================
+MODULE: monitoring
+================================================================================
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/alarms.tf
+================================================================================
+
+resource "aws_cloudwatch_metric_alarm" "alb_latency" {
+  alarm_name          = "alb-high-latency"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "TargetResponseTime"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 2
+
+  dimensions = {
+    LoadBalancer = var.alb_arn_suffix
+  }
+}
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/cloudwatch.tf
+================================================================================
+
+# Web Tier CPU Alarm
+resource "aws_cloudwatch_metric_alarm" "web_cpu_high" {
+  alarm_name          = "web-cpu-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 120
+  statistic           = "Average"
+  threshold           = 70
+
+  dimensions = {
+    AutoScalingGroupName = var.web_asg_name
+  }
+}
+
+# App Tier CPU Alarm
+resource "aws_cloudwatch_metric_alarm" "app_cpu_high" {
+  alarm_name          = "app-cpu-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 120
+  statistic           = "Average"
+  threshold           = 70
+
+  dimensions = {
+    AutoScalingGroupName = var.app_asg_name
+  }
+}
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/logs.tf
+================================================================================
+
+resource "aws_cloudwatch_log_group" "web" {
+  name              = "/hsbc-gamma/web"
+  retention_in_days = 14
+}
+
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/hsbc-gamma/app"
+  retention_in_days = 14
+}
+
+
+# # iam policy for cloudwatch logs (ec2 instances need permissions to create log groups/streams and put log events)
+# resource "aws_iam_policy" "cw_logs_policy" {
+#   name = "cloudwatch-logs-policy"
+
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [{
+#       Effect = "Allow"
+#       Action = [
+#         "logs:CreateLogGroup",
+#         "logs:CreateLogStream",
+#         "logs:PutLogEvents"
+#       ]
+#       Resource = "*"
+#     }]
+#   })
+# }
+
+# # then attach the policy to the web and app roles
+# resource "aws_iam_role_policy_attachment" "web_logs" {
+#   role       = aws_iam_role.web_role.name
+#   policy_arn = aws_iam_policy.cw_logs_policy.arn
+# }
+
+# resource "aws_iam_role_policy_attachment" "app_logs" {
+#   role       = aws_iam_role.app_role.name
+#   policy_arn = aws_iam_policy.cw_logs_policy.arn
+# }
+
+
+
+================================================================================
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/variables.tf
+================================================================================
+
+variable "alb_arn_suffix" {
+  description = "arn suffix"
+  type        = string
+}
+
+variable "web_asg_name" {
+  description = "web asg name"
+  type = string
+}
+
+variable "app_asg_name" {
+  description = "app asg name"
+  type = string
+}
+
+
+----------------------------------------
+FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/user_data.sh
+----------------------------------------
+
+# Install CloudWatch Agent (EC2 user_data.sh)
+yum install -y amazon-cloudwatch-agent
+
+cat << EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/httpd/access_log",
+            "log_group_name": "/hsbc-gamma/web",
+            "log_stream_name": "{instance_id}"
+          }
+        ]
+      }
+    }
+  }
+}
+EOF
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+-a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
+
+
+# App Tier user_data.sh (append this)
+yum install -y amazon-cloudwatch-agent
+
+cat << EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/messages",
+            "log_group_name": "/hsbc-gamma/app",
+            "log_stream_name": "{instance_id}"
+          }
+        ]
+      }
+    }
+  }
+}
+EOF
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+-a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s
+
+

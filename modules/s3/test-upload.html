@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Image Upload</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>3-Tier Image Platform Test</h1>
+        
+        <h2>Web Tier Status</h2>
+        <pre id="web-status">Loading...</pre>
+        
+        <h2>Upload Test Image</h2>
+        <form id="uploadForm">
+            <input type="file" name="image" accept="image/*" required>
+            <button type="submit">Upload</button>
+        </form>
+        
+        <h2>Response:</h2>
+        <pre id="response"></pre>
+        
+        <h2>S3 Buckets</h2>
+        <p>Raw: <code>hsbc-gamma-dev-raw-images</code></p>
+        <p>Processed: <code>hsbc-gamma-dev-processed-images</code></p>
+    </div>
+
+    <script>
+        const ALB_URL = 'http://hsbc-gamma-dev-alb-161020283.eu-north-1.elb.amazonaws.com';
+        
+        // Check web tier
+        fetch(ALB_URL)
+            .then(r => r.text())
+            .then(data => document.getElementById('web-status').textContent = data)
+            .catch(e => document.getElementById('web-status').textContent = 'Error: ' + e);
+        
+        // Handle upload
+        document.getElementById('uploadForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            document.getElementById('response').textContent = 'Uploading...';
+            
+            try {
+                const response = await fetch(ALB_URL + '/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('response').textContent = 'Error: ' + error;
+            }
+        };
+    </script>
+</body>
+</html>

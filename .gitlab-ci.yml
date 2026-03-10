@@ -1,0 +1,98 @@
+image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+
+variables:
+  # Terraform Settings
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  
+  # Pass GitLab CI variables to Terraform
+  TF_VAR_aws_access_key: "$AWS_ACCESS_KEY_ID"
+  TF_VAR_aws_secret_key: "$AWS_SECRET_ACCESS_KEY"
+  TF_VAR_aws_region: "eu-north-1"
+
+cache:
+  key: "${CI_COMMIT_REF_SLUG}"
+  paths:
+    - .terraform
+
+stages:
+  - init
+  - validate
+  - plan
+  - deploy
+  - destroy
+
+before_script:
+  - terraform --version
+  - terraform init
+
+init:
+  stage: init
+  script:
+    - echo "Terraform initialized"
+  only:
+    - merge_requests
+    - main
+
+validate:
+  stage: validate
+  script:
+    - terraform fmt -check -recursive || terraform fmt -recursive
+    - terraform validate
+  needs: ["init"]
+  only:
+    - merge_requests
+    - main
+
+plan:
+  stage: plan
+  script:
+    - terraform plan -out=tfplan
+  artifacts:
+    paths:
+      - tfplan
+    expire_in: 7 days
+  needs: ["validate"]
+  only:
+    - merge_requests
+    - main
+
+deploy:
+  stage: deploy
+  script:
+    - terraform apply -auto-approve tfplan
+    
+    # Refresh instances with new code
+    - |
+      echo "Refreshing web instances..."
+      aws autoscaling start-instance-refresh \
+        --auto-scaling-group-name web-asg \
+        --region ${TF_VAR_aws_region} || echo "Web refresh skipped"
+      
+      echo "Refreshing app instances..."
+      aws autoscaling start-instance-refresh \
+        --auto-scaling-group-name app-asg \
+        --region ${TF_VAR_aws_region} || echo "App refresh skipped"
+    
+    # Show app URL
+    - |
+      echo "Getting application URL..."
+      ALB_DNS=$(terraform output -raw alb_dns_name 2>/dev/null || echo "deploying...")
+      echo "Application is live at: http://${ALB_DNS}"
+      echo "Check CloudWatch for logs and metrics"
+      
+  artifacts:
+    paths:
+      - tfplan
+  needs: ["plan"]
+  when: manual
+  only:
+    - main
+
+destroy:
+  stage: destroy
+  script:
+    - terraform destroy -auto-approve
+  when: manual
+  only:
+    - main
