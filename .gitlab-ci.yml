@@ -96,3 +96,6 @@ destroy:
   when: manual
   only:
     - main
+
+    # Optional: Add notifications or cleanup steps here
+    # added terraform variables for AWS credentials and region, and updated the deploy stage to include instance refresh commands for the ASGs, as well as outputting the application URL after deployment.
