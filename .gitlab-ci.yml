@@ -47,7 +47,7 @@ validate:
 plan:
   stage: plan
   script:
-    # terraform.tfvars is in your repo and will be used automatically
+    - echo "📁 Using terraform.tfvars from repository"
     - terraform plan -out=tfplan
   artifacts:
     paths:
