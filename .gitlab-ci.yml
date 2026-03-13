@@ -1,7 +1,7 @@
 image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
 
 variables:
-  # AWS Credentials (from GitLab UI)
+  # AWS Credentials (from GitLab UI) - KEEP THESE TWO ONLY!
   AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
   AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
   AWS_DEFAULT_REGION: "eu-north-1"
@@ -24,6 +24,10 @@ stages:
 
 before_script:
   - terraform --version
+  # CRITICAL: Create terraform.tfvars from the template file
+  - cp terraform.tfvars.example terraform.tfvars
+  - echo "✅ Created terraform.tfvars from template"
+  - cat terraform.tfvars  # Show it's working (remove in production)
   - terraform init
 
 init:
@@ -47,7 +51,7 @@ validate:
 plan:
   stage: plan
   script:
-    - echo "📁 Using terraform.tfvars from repository"
+    - echo "📁 Planning infrastructure changes..."
     - terraform plan -out=tfplan
   artifacts:
     paths:
