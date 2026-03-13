@@ -1,12 +1,12 @@
 COMPLETE TERRAFORM CONFIGURATION
-Generated on: Mon Mar  9 18:05:08 WAT 2026
+Generated on: Fri, Mar 13, 2026  2:40:16 PM
 ================================================================================
 
 ROOT MODULE FILES
 ----------------------------------------
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/main.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/main.tf
 ================================================================================
 
 # vpc module root main.tf
@@ -30,15 +30,13 @@ module "security" {
   processed_bucket_name = var.processed_images_bucket_name
 }
 
-
-
 # s3 module root main.tf
 module "s3" {
   source = "./modules/s3"
 
   project_name                 = var.project_name
   raw_bucket_name              = var.raw_images_bucket_name
-  processed_images_bucket_name = var.processed_images_bucket_name
+  processed_images_bucket_name = var.processed_images_bucket_name # This matches the module variable
   app_role_arn                 = module.security.app_role_arn
 }
 
@@ -72,30 +70,23 @@ module "app" {
   private_subnet_ids    = module.vpc.private_subnet_ids
   app_sg_id             = module.security.app_sg_id
   raw_bucket_name       = var.raw_images_bucket_name
-  processed_bucket_name = var.processed_images_bucket_name
+  processed_bucket_name = var.processed_images_bucket_name # This maps root var to module var
   app_instance_profile  = module.security.app_instance_profile_name
+  target_group_arn      = module.alb.app_target_group_arn # Add this line
 }
 
-# main.tf - Add monitoring module at the end
+# monitoring module
 module "monitoring" {
   source = "./modules/monitoring"
 
-  alb_arn_suffix = module.alb.alb_arn_suffix # You'll need to add this output to alb module
+  alb_arn_suffix = module.alb.alb_arn_suffix
   web_asg_name   = module.web.web_asg_name
   app_asg_name   = module.app.app_asg_name
 }
 
 
-
-
-
-
-
-
-
-
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/outputs.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/outputs.tf
 ================================================================================
 
 output "raw_bucket_arn" {
@@ -124,7 +115,7 @@ output "app_asg_name" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/providers.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/providers.tf
 ================================================================================
 
 terraform {
@@ -142,9 +133,13 @@ provider "aws" {
   profile = "cloudreality"
 }
 
+# Configure the AWS Provider for the default profile
+# This is used for the S3 backend to store the Terraform state file.
+# THIS IS EDUCATIONAL, C'EST UN MOIYEN DE VISUALISE
+
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/variables.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/variables.tf
 ================================================================================
 
 # root module variables.tf
@@ -251,6 +246,10 @@ variable "ami_id" {
   type        = string
 }
 
+# final changes at the end of the file
+# final changes at the end of the file
+# final changes at the end of the file
+
 
 
 
@@ -263,7 +262,7 @@ variable "ami_id" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/terraform.tfvars
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/terraform.tfvars
 ================================================================================
 
 ############################
@@ -354,7 +353,7 @@ MODULE: vpc
 ================================================================================
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/main.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/main.tf
 ================================================================================
 
 # create a vpc
@@ -474,7 +473,7 @@ resource "aws_route" "private-route" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/outputs.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/outputs.tf
 ================================================================================
 
 # output for VPC ID
@@ -526,7 +525,7 @@ output "availability_zones" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/variables.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/variables.tf
 ================================================================================
 
 variable "vpc_cidr" {
@@ -562,8 +561,11 @@ MODULE: security
 ================================================================================
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/iam.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/iam.tf
 ================================================================================
+
+# Add this at the top
+data "aws_caller_identity" "current" {}
 
 # assume role for iam
 data "aws_iam_policy_document" "ec2_assume_role" {
@@ -630,7 +632,7 @@ data "aws_iam_policy_document" "app_s3_policy" {
     ]
   }
 
-  # ADD THIS STATEMENT for KMS permissions
+  # Add KMS permissions
   statement {
     effect = "Allow"
 
@@ -646,8 +648,16 @@ data "aws_iam_policy_document" "app_s3_policy" {
   }
 }
 
-# You'll also need to add this data source at the top of the file
-data "aws_caller_identity" "current" {}
+# Create the actual IAM policy resource
+resource "aws_iam_policy" "app_s3_policy" {
+  name        = "${var.project_name}-app-s3-policy"
+  description = "Policy for app tier to access S3 buckets"
+  policy      = data.aws_iam_policy_document.app_s3_policy.json
+
+  tags = {
+    Name = "${var.project_name}-app-s3-policy"
+  }
+}
 
 # Attach S3 policy to app role
 resource "aws_iam_role_policy_attachment" "app_s3_attach" {
@@ -676,7 +686,7 @@ resource "aws_iam_instance_profile" "app_profile" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/outputs.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/outputs.tf
 ================================================================================
 
 output "alb_sg_id" {
@@ -721,7 +731,7 @@ output "app_role_name" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/sg.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/sg.tf
 ================================================================================
 
 # create security group for alb
@@ -805,7 +815,7 @@ resource "aws_security_group" "app_sg" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/variables.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/security/variables.tf
 ================================================================================
 
 variable "vpc_id" {
@@ -838,7 +848,7 @@ MODULE: s3
 ================================================================================
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/buckets.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/buckets.tf
 ================================================================================
 
 # S3 Buckets for raw and processed images
@@ -888,7 +898,7 @@ resource "aws_s3_bucket_public_access_block" "processed" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/kms.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/kms.tf
 ================================================================================
 
 # KMS Key for S3 Buckets
@@ -924,40 +934,40 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "raw" {
 }
 
 
-# s3 access policy for app role
-data "aws_iam_policy_document" "app_s3_policy" {
-  statement {
-    effect = "Allow"
+# # s3 access policy for app role
+# data "aws_iam_policy_document" "app_s3_policy" {
+#   statement {
+#     effect = "Allow"
 
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:ListBucket"
-    ]
+#     actions = [
+#       "s3:GetObject",
+#       "s3:PutObject",
+#       "s3:ListBucket"
+#     ]
 
-    resources = [
-      "arn:aws:s3:::${var.raw_bucket_name}",
-      "arn:aws:s3:::${var.raw_bucket_name}/*",
-      "arn:aws:s3:::${var.processed_bucket_name}",
-      "arn:aws:s3:::${var.processed_bucket_name}/*"
-    ]
-  }
+#     resources = [
+#       "arn:aws:s3:::${var.raw_bucket_name}",
+#       "arn:aws:s3:::${var.raw_bucket_name}/*",
+#       "arn:aws:s3:::${var.processed_bucket_name}",
+#       "arn:aws:s3:::${var.processed_bucket_name}/*"
+#     ]
+#   }
 
-  # More specific KMS permissions using the key ARN from the s3 module
-  statement {
-    effect = "Allow"
+#   # More specific KMS permissions using the key ARN from the s3 module
+#   statement {
+#     effect = "Allow"
 
-    actions = [
-      "kms:GenerateDataKey",
-      "kms:Decrypt",
-      "kms:Encrypt"
-    ]
+#     actions = [
+#       "kms:GenerateDataKey",
+#       "kms:Decrypt",
+#       "kms:Encrypt"
+#     ]
 
-    resources = [
-      module.s3.kms_key_arn  # This will need to be passed as a variable
-    ]
-  }
-}
+#     resources = [
+#       module.s3.kms_key_arn  # This will need to be passed as a variable
+#     ]
+#   }
+# }
 
 
 
@@ -971,7 +981,7 @@ data "aws_iam_policy_document" "app_s3_policy" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/lifecycle.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/lifecycle.tf
 ================================================================================
 
 # create lifecycle rule for raw bucket
@@ -1099,7 +1109,7 @@ resource "aws_s3_bucket_policy" "processed_policy" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/outputs.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/outputs.tf
 ================================================================================
 
 output "raw_bucket_arn" {
@@ -1117,7 +1127,7 @@ output "kms_key_arn" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/variables.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/s3/variables.tf
 ================================================================================
 
 variable "project_name" {
@@ -1128,7 +1138,7 @@ variable "raw_bucket_name" {
   type = string
 }
 
-variable "processed_images_bucket_name" {
+variable "processed_images_bucket_name" {  # Keep this one (matches root variable)
   type = string
 }
 
@@ -1136,11 +1146,10 @@ variable "app_role_arn" {
   type = string
 }
 
-variable "processed_bucket_name" {
-  type = string
-}
-
-
+# REMOVE this duplicate variable
+# variable "processed_bucket_name" {
+#   type = string
+# }
 
 
 ================================================================================
@@ -1148,7 +1157,7 @@ MODULE: alb
 ================================================================================
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/main.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/main.tf
 ================================================================================
 
 resource "aws_lb" "this" {
@@ -1231,7 +1240,7 @@ resource "aws_lb_listener_rule" "app_rule" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/outputs.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/outputs.tf
 ================================================================================
 
 output "alb_dns_name" {
@@ -1252,7 +1261,7 @@ output "alb_arn_suffix" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/variables.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/alb/variables.tf
 ================================================================================
 
 variable "name" {
@@ -1284,7 +1293,7 @@ MODULE: web
 ================================================================================
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/asg.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/asg.tf
 ================================================================================
 
 resource "aws_autoscaling_group" "web_asg" {
@@ -1310,7 +1319,7 @@ resource "aws_autoscaling_group" "web_asg" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/launch_template.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/launch_template.tf
 ================================================================================
 
 resource "aws_launch_template" "web_lt" {
@@ -1334,7 +1343,7 @@ resource "aws_launch_template" "web_lt" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/output.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/output.tf
 ================================================================================
 
 output "web_asg_name" {
@@ -1344,7 +1353,7 @@ output "web_asg_name" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/variables.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/variables.tf
 ================================================================================
 
 variable "ami_id" {
@@ -1378,17 +1387,178 @@ variable "target_group_arn" {
 
 
 ----------------------------------------
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/user_data.sh
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/user_data.sh
 ----------------------------------------
 
 #!/bin/bash
 yum update -y
 yum install -y httpd
-systemctl start httpd
-systemctl enable httpd
 
-echo "<h1>Web Tier - $(hostname)</h1>" > /var/www/html/index.html
+# Create a proper web UI
+cat << 'EOF' > /var/www/html/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HSBC-gamma-dev Image Platform</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #db0b5f; } /* HSBC red */
+        .upload-area { border: 2px dashed #ccc; padding: 30px; text-align: center; margin: 20px 0; }
+        .upload-area:hover { border-color: #db0b5f; }
+        .btn { background: #db0b5f; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn:hover { background: #b5094c; }
+        .images { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; }
+        .image-card { border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+        .image-card img { max-width: 100%; height: auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; display: none; }
+        .success { background: #d4edda; color: #155724; display: block; }
+        .error { background: #f8d7da; color: #721c24; display: block; }
+        .info { background: #d1ecf1; color: #0c5460; display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>HSBC-gamma-dev Image Platform</h1>
+        <p>Host: <span id="hostname">$(hostname)</span></p>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="upload-area" id="dropArea">
+            <h3>Drag & Drop or Click to Upload</h3>
+            <p>Supported: JPG, PNG, GIF</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            <button class="btn" onclick="document.getElementById('fileInput').click()">Select Image</button>
+        </div>
 
+        <h2>Processed Images</h2>
+        <div class="images" id="imageGallery">
+            <p>No images processed yet. Upload one above!</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '';  // Same host, different path
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+        const gallery = document.getElementById('imageGallery');
+
+        // Handle drag & drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        dropArea.addEventListener('drop', handleDrop, false);
+        fileInput.addEventListener('change', handleFiles, false);
+
+        function handleDrop(e) {
+            const files = e.dataTransfer.files;
+            handleFiles({ target: { files: files } });
+        }
+
+        function handleFiles(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            showStatus('Uploading...', 'info');
+            
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showStatus('Error: ' + data.error, 'error');
+                } else {
+                    showStatus('Success! Image processed.', 'success');
+                    loadProcessedImages();
+                }
+            })
+            .catch(error => {
+                showStatus('Error: ' + error, 'error');
+            });
+        }
+
+        function showStatus(message, type) {
+            statusDiv.className = 'status ' + type;
+            statusDiv.textContent = message;
+        }
+
+        function loadProcessedImages() {
+            // In a real implementation, you'd have an API endpoint to list images
+            // For now, we'll just show a placeholder
+            gallery.innerHTML = '<p>Images are being processed and stored in S3. Check the processed bucket!</p>';
+        }
+    </script>
+</body>
+</html>
+EOF
+
+# Create a PHP proxy to handle API calls (optional, but simplifies things)
+cat << 'EOF' > /var/www/html/upload-proxy.php
+<?php
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
+    $url = 'http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload';
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, array('image' => new CURLFile($_FILES['image']['tmp_name'])));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    header('Content-Type: application/json');
+    http_response_code($httpCode);
+    echo $response;
+    exit;
+}
+
+// List processed images (simplified - you'd need to list from S3)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['list'])) {
+    // This would list from S3 - implement if needed
+    echo json_encode(['images' => []]);
+    exit;
+}
+?>
+EOF
+
+# Configure Apache to handle the proxy
+cat << 'EOF' > /etc/httpd/conf.d/proxy.conf
+<IfModule mod_proxy.c>
+    ProxyRequests Off
+    ProxyPreserveHost On
+    
+    <Location /upload>
+        ProxyPass http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload
+        ProxyPassReverse http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload
+    </Location>
+</IfModule>
+EOF
+
+# Enable proxy modules
+sed -i 's/#LoadModule proxy_module/LoadModule proxy_module/' /etc/httpd/conf/httpd.conf
+sed -i 's/#LoadModule proxy_http_module/LoadModule proxy_http_module/' /etc/httpd/conf/httpd.conf
+
+# Set proper permissions
+chown apache:apache /var/www/html/index.html
+chown apache:apache /var/www/html/upload-proxy.php
+
+# Restart Apache
+systemctl restart httpd
 
 
 ================================================================================
@@ -1396,7 +1566,7 @@ MODULE: app
 ================================================================================
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/asg.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/asg.tf
 ================================================================================
 
 resource "aws_autoscaling_group" "app_asg" {
@@ -1424,7 +1594,7 @@ resource "aws_autoscaling_group" "app_asg" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/launch_template.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/launch_template.tf
 ================================================================================
 
 resource "aws_launch_template" "app_lt" {
@@ -1454,7 +1624,7 @@ resource "aws_launch_template" "app_lt" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/outputs.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/outputs.tf
 ================================================================================
 
 output "app_asg_name" {
@@ -1465,7 +1635,7 @@ output "app_asg_name" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/variables.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/variables.tf
 ================================================================================
 
 variable "ami_id" {
@@ -1511,22 +1681,25 @@ variable "target_group_arn" {
 
 
 ----------------------------------------
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/user_data.sh
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/user_data.sh
 ----------------------------------------
 
 #!/bin/bash
-set -x  # Print commands for debugging
+set -x
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
 echo "Starting app tier user data script at $(date)"
 
 # Update and install dependencies
 yum update -y
-yum install -y python3 pip
+yum install -y python3 python3-pip
+
+# Install system dependencies for Pillow
+yum install -y libjpeg-turbo-devel zlib-devel libtiff-devel freetype-devel lcms2-devel
 
 # Install Python packages
-pip3 install flask pillow boto3
+pip3 install flask boto3 Pillow==9.5.0  # Use stable version
 
-# Create the Flask app with health check
+# Create the Flask app with proper image handling
 cat << 'EOF' > /home/ec2-user/app.py
 from flask import Flask, request, jsonify
 from PIL import Image
@@ -1536,6 +1709,7 @@ import uuid
 import logging
 import socket
 import time
+from botocore.exceptions import ClientError
 
 # Configure logging
 logging.basicConfig(
@@ -1557,6 +1731,59 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize S3 client: {str(e)}")
     s3 = None
+
+def process_image_sizes(img, base_filename):
+    """Process image into multiple sizes and return list of generated files"""
+    generated_files = []
+    
+    # Define sizes
+    sizes = {
+        'thumbnail': (150, 150),
+        'small': (300, 300),
+        'medium': (800, 800),
+        'large': (1200, 1200)
+    }
+    
+    # Convert to RGB if necessary (for JPEG compatibility)
+    if img.mode in ('RGBA', 'LA', 'P'):
+        # Create a white background for transparency
+        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+        if img.mode == 'P':
+            img = img.convert('RGBA')
+        rgb_img.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+        img = rgb_img
+    
+    for size_name, dimensions in sizes.items():
+        try:
+            logger.info(f'Creating {size_name} size: {dimensions}')
+            
+            # Create a copy and resize
+            img_copy = img.copy()
+            img_copy.thumbnail(dimensions, Image.Resampling.LANCZOS)
+            
+            # Save to temp file
+            temp_filename = f'/tmp/{size_name}-{base_filename}'
+            
+            # Determine format from original or default to JPEG
+            if base_filename.lower().endswith('.png'):
+                img_copy.save(temp_filename, 'PNG')
+                s3_key = f'{size_name}-{base_filename.replace(".jpg", ".png")}'
+            else:
+                img_copy.save(temp_filename, 'JPEG', quality=85, optimize=True)
+                s3_key = f'{size_name}-{base_filename}'
+            
+            generated_files.append({
+                'path': temp_filename,
+                's3_key': s3_key,
+                'size_name': size_name
+            })
+            logger.info(f'Saved {size_name} to {temp_filename}')
+            
+        except Exception as e:
+            logger.error(f'Failed to process {size_name}: {str(e)}')
+            continue
+    
+    return generated_files
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -1601,56 +1828,72 @@ def upload():
             return jsonify({'error': 'No file selected'}), 400
         
         # Generate unique filename
-        filename = f"{uuid.uuid4()}-{file.filename}"
-        logger.info(f'Processing file: {filename}')
+        original_filename = file.filename
+        file_ext = os.path.splitext(original_filename)[1].lower()
+        base_filename = f"{uuid.uuid4()}{file_ext}"
+        logger.info(f'Processing file: {base_filename} (original: {original_filename})')
         
         # Save temporarily
-        temp_path = f'/tmp/{filename}'
+        temp_path = f'/tmp/{base_filename}'
         file.save(temp_path)
         logger.info(f'Saved to {temp_path}')
         
+        # Verify file was saved and has content
+        if not os.path.exists(temp_path) or os.path.getsize(temp_path) == 0:
+            logger.error('File not saved properly or empty')
+            return jsonify({'error': 'Failed to save file'}), 500
+        
         # Upload original to raw bucket
         try:
-            s3.upload_file(temp_path, RAW_BUCKET, filename)
-            logger.info(f'Uploaded to raw bucket: {filename}')
-        except Exception as e:
+            s3.upload_file(temp_path, RAW_BUCKET, base_filename)
+            logger.info(f'Uploaded original to raw bucket: {base_filename}')
+        except ClientError as e:
             logger.error(f'Failed to upload to raw bucket: {str(e)}')
             return jsonify({'error': f'Failed to upload to raw bucket: {str(e)}'}), 500
         
-        # Process image
+        # Open and process image
         try:
             img = Image.open(temp_path)
-            sizes = {
-                'thumb': (150, 150),
-                'medium': (500, 500)
-            }
+            logger.info(f'Image opened: mode={img.mode}, format={img.format}, size={img.size}')
             
-            for name, size in sizes.items():
-                logger.info(f'Creating {name} size')
-                img_resized = img.resize(size)
-                resized_path = f'/tmp/{name}-{filename}'
-                img_resized.save(resized_path)
-                
-                # Upload resized image
-                s3.upload_file(resized_path, PROCESSED_BUCKET, f'{name}-{filename}')
-                os.remove(resized_path)
-                logger.info(f'Uploaded {name} to processed bucket')
+            # Process image into multiple sizes
+            processed_files = process_image_sizes(img, base_filename)
+            
+            if not processed_files:
+                logger.error('No images were processed successfully')
+                return jsonify({'error': 'Image processing failed'}), 500
+            
+            # Upload processed files
+            uploaded_sizes = []
+            for file_info in processed_files:
+                try:
+                    s3.upload_file(file_info['path'], PROCESSED_BUCKET, file_info['s3_key'])
+                    logger.info(f'Uploaded {file_info["size_name"]} to processed bucket: {file_info["s3_key"]}')
+                    uploaded_sizes.append(file_info['size_name'])
+                    
+                    # Clean up temp file
+                    os.remove(file_info['path'])
+                except ClientError as e:
+                    logger.error(f'Failed to upload {file_info["size_name"]}: {str(e)}')
+            
+            # Clean up original temp file
+            os.remove(temp_path)
+            logger.info('Processing complete')
+            
+            return jsonify({
+                'message': 'Image processed successfully',
+                'original': base_filename,
+                'sizes': uploaded_sizes,
+                'raw_bucket': RAW_BUCKET,
+                'processed_bucket': PROCESSED_BUCKET
+            }), 200
+            
         except Exception as e:
             logger.error(f'Failed to process image: {str(e)}')
             return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
         
-        # Clean up
-        os.remove(temp_path)
-        logger.info('Processing complete')
-        
-        return jsonify({
-            'message': 'Image processed successfully',
-            'filename': filename,
-            'sizes': list(sizes.keys())
-        }), 200
-        
     except Exception as e:
-        logger.error(f'Error processing image: {str(e)}')
+        logger.error(f'Error processing upload: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
@@ -1665,13 +1908,18 @@ chown ec2-user:ec2-user /home/ec2-user/app.py
 chmod 755 /home/ec2-user/app.py
 
 # Set environment variables
+cat << EOF >> /etc/environment
+RAW_BUCKET=hsbc-gamma-dev-raw-images
+PROCESSED_BUCKET=hsbc-gamma-dev-processed-images
+EOF
+
 export RAW_BUCKET=hsbc-gamma-dev-raw-images
 export PROCESSED_BUCKET=hsbc-gamma-dev-processed-images
 
 # Kill any existing Flask processes
 pkill -f "python3 /home/ec2-user/app.py" || true
 
-# Start the Flask app with nohup
+# Start the Flask app
 cd /home/ec2-user
 nohup python3 /home/ec2-user/app.py > /home/ec2-user/app.log 2>&1 &
 
@@ -1697,7 +1945,7 @@ MODULE: monitoring
 ================================================================================
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/alarms.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/alarms.tf
 ================================================================================
 
 resource "aws_cloudwatch_metric_alarm" "alb_latency" {
@@ -1718,7 +1966,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_latency" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/cloudwatch.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/cloudwatch.tf
 ================================================================================
 
 # Web Tier CPU Alarm
@@ -1756,7 +2004,7 @@ resource "aws_cloudwatch_metric_alarm" "app_cpu_high" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/logs.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/logs.tf
 ================================================================================
 
 resource "aws_cloudwatch_log_group" "web" {
@@ -1802,7 +2050,7 @@ resource "aws_cloudwatch_log_group" "app" {
 
 
 ================================================================================
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/variables.tf
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/variables.tf
 ================================================================================
 
 variable "alb_arn_suffix" {
@@ -1822,7 +2070,7 @@ variable "app_asg_name" {
 
 
 ----------------------------------------
-FILE: /mnt/c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/user_data.sh
+FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/monitoring/user_data.sh
 ----------------------------------------
 
 # Install CloudWatch Agent (EC2 user_data.sh)
