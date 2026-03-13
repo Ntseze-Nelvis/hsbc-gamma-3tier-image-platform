@@ -24,6 +24,9 @@ stages:
 
 before_script:
   - terraform --version
+  # Create terraform.tfvars from template (for plan/apply stages)
+  - cp terraform.tfvars.example terraform.tfvars || echo "⚠️ No template found, using existing tfvars"
+  - echo "✅ Environment prepared"
   - terraform init
 
 init:
@@ -38,7 +41,7 @@ validate:
   stage: validate
   script:
     - terraform fmt -check -recursive || terraform fmt -recursive
-    - terraform validate -var-file=terraform.tfvars
+    - terraform validate  # No -var-file needed here
   needs: ["init"]
   only:
     - merge_requests
