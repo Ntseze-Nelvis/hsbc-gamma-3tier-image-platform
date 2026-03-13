@@ -1,34 +1,10 @@
 image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
 
 variables:
-  # AWS Credentials (from GitLab UI)
+  # AWS Credentials
   AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
   AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
   AWS_DEFAULT_REGION: "eu-north-1"
-  
-  # Terraform Variables (all 21 of them from your GitLab UI)
-  TF_VAR_project_name: $TF_VAR_project_name
-  TF_VAR_environment: $TF_VAR_environment
-  TF_VAR_aws_region: $TF_VAR_aws_region
-  TF_VAR_vpc_cidr: $TF_VAR_vpc_cidr
-  TF_VAR_azs: $TF_VAR_azs
-  TF_VAR_public_subnets: $TF_VAR_public_subnets
-  TF_VAR_private_subnets: $TF_VAR_private_subnets
-  TF_VAR_raw_images_bucket_name: $TF_VAR_raw_images_bucket_name
-  TF_VAR_processed_images_bucket_name: $TF_VAR_processed_images_bucket_name
-  TF_VAR_web_instance_type: $TF_VAR_web_instance_type
-  TF_VAR_app_instance_type: $TF_VAR_app_instance_type
-  TF_VAR_web_port: $TF_VAR_web_port
-  TF_VAR_app_port: $TF_VAR_app_port
-  TF_VAR_key_pair_name: $TF_VAR_key_pair_name
-  TF_VAR_web_desired_capacity: $TF_VAR_web_desired_capacity
-  TF_VAR_web_min_size: $TF_VAR_web_min_size
-  TF_VAR_web_max_size: $TF_VAR_web_max_size
-  TF_VAR_app_max_size: $TF_VAR_app_max_size
-  TF_VAR_enable_cloudwatch_logs: $TF_VAR_enable_cloudwatch_logs
-  TF_VAR_app_min_size: $TF_VAR_app_min_size
-  TF_VAR_app_desired_capacity: $TF_VAR_app_desired_capacity
-  TF_VAR_ami_id: $TF_VAR_ami_id
   
   # Terraform Settings
   TF_IN_AUTOMATION: "true"
@@ -48,6 +24,35 @@ stages:
 
 before_script:
   - terraform --version
+  
+  # Create terraform.tfvars file with all variables
+  - |
+    cat > terraform.tfvars << EOF
+    project_name = "$TF_VAR_project_name"
+    environment = "$TF_VAR_environment"
+    aws_region = "$TF_VAR_aws_region"
+    vpc_cidr = "$TF_VAR_vpc_cidr"
+    azs = $TF_VAR_azs
+    public_subnets = $TF_VAR_public_subnets
+    private_subnets = $TF_VAR_private_subnets
+    raw_images_bucket_name = "$TF_VAR_raw_images_bucket_name"
+    processed_images_bucket_name = "$TF_VAR_processed_images_bucket_name"
+    web_instance_type = "$TF_VAR_web_instance_type"
+    app_instance_type = "$TF_VAR_app_instance_type"
+    web_port = $TF_VAR_web_port
+    app_port = $TF_VAR_app_port
+    key_pair_name = "$TF_VAR_key_pair_name"
+    web_desired_capacity = $TF_VAR_web_desired_capacity
+    web_min_size = $TF_VAR_web_min_size
+    web_max_size = $TF_VAR_web_max_size
+    app_max_size = $TF_VAR_app_max_size
+    enable_cloudwatch_logs = $TF_VAR_enable_cloudwatch_logs
+    app_min_size = $TF_VAR_app_min_size
+    app_desired_capacity = $TF_VAR_app_desired_capacity
+    ami_id = "$TF_VAR_ami_id"
+    EOF
+    
+  - cat terraform.tfvars  # For debugging (remove in production)
   - terraform init
 
 init:
@@ -75,6 +80,7 @@ plan:
   artifacts:
     paths:
       - tfplan
+      - terraform.tfvars
   needs: ["validate"]
   only:
     - merge_requests
