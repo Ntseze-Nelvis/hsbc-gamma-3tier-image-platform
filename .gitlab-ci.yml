@@ -38,7 +38,7 @@ validate:
   stage: validate
   script:
     - terraform fmt -check -recursive || terraform fmt -recursive
-    - terraform validate
+    - terraform validate -var-file=terraform.tfvars
   needs: ["init"]
   only:
     - merge_requests
@@ -47,8 +47,11 @@ validate:
 plan:
   stage: plan
   script:
-    # terraform.tfvars is already in your repo with all values!
-    - terraform plan -out=tfplan
+    - echo "📁 Current directory contents:"
+    - ls -la
+    - echo "📄 terraform.tfvars content:"
+    - cat terraform.tfvars || echo "⚠️ terraform.tfvars not found!"
+    - terraform plan -var-file=terraform.tfvars -out=tfplan
   artifacts:
     paths:
       - tfplan
@@ -60,7 +63,7 @@ plan:
 deploy:
   stage: deploy
   script:
-    - terraform apply -auto-approve tfplan
+    - terraform apply -var-file=terraform.tfvars -auto-approve tfplan
     - |
       echo "🔄 Refreshing web instances..."
       aws autoscaling start-instance-refresh \
@@ -83,7 +86,7 @@ destroy:
   stage: destroy
   script:
     - echo "⚠️  DESTROYING ALL INFRASTRUCTURE!"
-    - terraform destroy -auto-approve
+    - terraform destroy -var-file=terraform.tfvars -auto-approve
   when: manual
   only:
     - main
