@@ -1,0 +1,229 @@
+# GitLab CI/CD Pipeline for HSBC Gamma Dev - 3-Tier Image Platform
+
+stages:
+  - validate
+  - plan
+  - apply
+  - destroy
+
+variables:
+  # Terraform configuration
+  TF_ROOT: "terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform"
+  TF_VERSION: "1.5.0"
+  
+  # Pass these to Terraform as variables
+  TF_VAR_aws_region: "eu-north-1"
+  TF_VAR_environment: "dev"
+  TF_VAR_project_name: "hsbc-gamma-dev"
+  TF_VAR_raw_images_bucket_name: "hsbc-gamma-dev-raw-images"
+  TF_VAR_processed_images_bucket_name: "hsbc-gamma-dev-processed-images"
+  TF_VAR_web_instance_type: "t3.micro"
+  TF_VAR_app_instance_type: "t3.micro"
+  TF_VAR_web_desired_capacity: "2"
+  TF_VAR_web_min_size: "1"
+  TF_VAR_web_max_size: "3"
+  TF_VAR_app_desired_capacity: "2"
+  TF_VAR_app_min_size: "1"
+  TF_VAR_app_max_size: "3"
+  TF_VAR_enable_cloudwatch_logs: "true"
+  TF_VAR_web_port: "80"
+  TF_VAR_app_port: "5000"
+  
+  # AWS configuration
+  AWS_DEFAULT_REGION: "eu-north-1"
+  
+  # Cache configuration
+  TF_CACHE_KEY: "${CI_COMMIT_REF_SLUG}-tf-cache"
+  
+  # GitLab CI/CD
+  GIT_STRATEGY: clone
+  GIT_DEPTH: 1
+
+# Cache Terraform plugins
+cache:
+  key: ${TF_CACHE_KEY}
+  paths:
+    - ${TF_ROOT}/.terraform
+  policy: pull-push
+
+# Base template for Terraform jobs
+.terraform_template: &terraform_template
+  image: hashicorp/terraform:${TF_VERSION}
+  before_script:
+    - cd ${TF_ROOT}
+    - terraform --version
+    - echo "Initializing Terraform..."
+    - terraform init
+    - echo "✅ Terraform initialized"
+  cache:
+    key: ${TF_CACHE_KEY}
+    paths:
+      - ${TF_ROOT}/.terraform
+    policy: pull
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+
+# ============================================
+# VALIDATION STAGE
+# ============================================
+
+terraform-fmt:
+  stage: validate
+  image: hashicorp/terraform:${TF_VERSION}
+  script:
+    - cd ${TF_ROOT}
+    - echo "Checking Terraform formatting..."
+    - terraform fmt -check -recursive
+    - echo "✅ Terraform formatting is correct"
+  only:
+    - merge_requests
+    - main
+    - develop
+
+terraform-validate:
+  stage: validate
+  <<: *terraform_template
+  script:
+    - echo "Validating Terraform configuration..."
+    - terraform validate
+    - echo "✅ Terraform configuration is valid"
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# ============================================
+# PLAN STAGE
+# ============================================
+
+terraform-plan:
+  stage: plan
+  <<: *terraform_template
+  script:
+    - echo "Generating Terraform plan..."
+    - terraform plan -out=tfplan -no-color
+    - terraform show -no-color tfplan > plan.txt
+    - echo "✅ Plan generated successfully"
+  artifacts:
+    paths:
+      - ${TF_ROOT}/tfplan
+      - ${TF_ROOT}/plan.txt
+    expire_in: 7 days
+    when: always
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# ============================================
+# APPLY STAGE
+# ============================================
+
+terraform-apply:
+  stage: apply
+  <<: *terraform_template
+  script:
+    - echo "Applying Terraform configuration..."
+    - |
+      if [ -f "tfplan" ]; then
+        terraform apply -auto-approve tfplan
+      else
+        echo "No plan file found, running plan first..."
+        terraform plan -out=tfplan
+        terraform apply -auto-approve tfplan
+      fi
+    - |
+      ALB_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "Not available")
+      echo "Deployment Information:" > deployment-info.txt
+      echo "ALB DNS Name: $ALB_URL" >> deployment-info.txt
+      echo "Raw Bucket ARN: $(terraform output -raw raw_bucket_arn 2>/dev/null || echo 'Not available')" >> deployment-info.txt
+      echo "Processed Bucket ARN: $(terraform output -raw processed_bucket_arn 2>/dev/null || echo 'Not available')" >> deployment-info.txt
+    - echo "✅ Terraform apply completed successfully"
+    - echo "🌐 Application URL: http://$ALB_URL"
+  artifacts:
+    paths:
+      - ${TF_ROOT}/deployment-info.txt
+    expire_in: 30 days
+  only:
+    - main
+  when: manual
+  environment:
+    name: production
+    on_stop: terraform-destroy
+
+# Apply for develop branch (FIXED)
+terraform-apply-dev:
+  stage: apply
+  <<: *terraform_template
+  script:
+    - echo "Applying Terraform configuration to development..."
+    - terraform apply -auto-approve
+    - echo "✅ Development deployment completed"
+    - ALB_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "Not available")
+    - echo "🌐 Development URL: http://$ALB_URL"
+  artifacts:
+    paths:
+      - ${TF_ROOT}/deployment-info.txt
+    expire_in: 30 days
+  only:
+    - develop
+  when: manual
+  environment:
+    name: development
+    on_stop: terraform-destroy-dev
+
+# ============================================
+# DESTROY STAGE
+# ============================================
+
+terraform-destroy:
+  stage: destroy
+  <<: *terraform_template
+  script:
+    - echo "⚠️  WARNING: This will destroy ALL infrastructure!"
+    - echo "Resources to be destroyed:"
+    - terraform state list
+    - echo ""
+    - echo "Emptying S3 buckets..."
+    - |
+      for bucket in $(terraform state list 2>/dev/null | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do
+        if [ -n "$bucket" ]; then
+          echo "Emptying bucket: $bucket"
+          aws s3 rm "s3://$bucket" --recursive 2>/dev/null || true
+        fi
+      done
+    - echo "Destroying infrastructure..."
+    - terraform destroy -auto-approve
+    - echo "✅ Infrastructure destroyed successfully"
+  only:
+    - main
+  when: manual
+  environment:
+    name: production
+    action: stop
+  allow_failure: false
+
+terraform-destroy-dev:
+  stage: destroy
+  <<: *terraform_template
+  script:
+    - echo "Destroying development infrastructure..."
+    - echo "Emptying S3 buckets..."
+    - |
+      for bucket in $(terraform state list 2>/dev/null | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do
+        if [ -n "$bucket" ]; then
+          aws s3 rm "s3://$bucket" --recursive 2>/dev/null || true
+        fi
+      done
+    - terraform destroy -auto-approve
+    - echo "✅ Development infrastructure destroyed"
+  only:
+    - develop
+  when: manual
+  environment:
+    name: development
+    action: stop
+  allow_failure: false

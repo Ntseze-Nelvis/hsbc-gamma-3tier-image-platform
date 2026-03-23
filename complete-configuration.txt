@@ -1,5 +1,5 @@
 COMPLETE TERRAFORM CONFIGURATION
-Generated on: Fri, Mar 13, 2026  2:40:16 PM
+Generated on: Mon, Mar 23, 2026  1:34:12 PM
 ================================================================================
 
 ROOT MODULE FILES
@@ -133,9 +133,6 @@ provider "aws" {
   profile = "cloudreality"
 }
 
-# Configure the AWS Provider for the default profile
-# This is used for the S3 backend to store the Terraform state file.
-# THIS IS EDUCATIONAL, C'EST UN MOIYEN DE VISUALISE
 
 
 ================================================================================
