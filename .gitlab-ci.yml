@@ -4,18 +4,30 @@ stages:
   - apply
 
 variables:
-  TF_ROOT: "terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform"
+  TF_ROOT: "."
   TF_VERSION: "1.5.0"
   TF_VAR_aws_region: "eu-north-1"
   TF_VAR_environment: "dev"
   TF_VAR_project_name: "hsbc-gamma-dev"
+  TF_VAR_raw_images_bucket_name: "hsbc-gamma-dev-raw-images"
+  TF_VAR_processed_images_bucket_name: "hsbc-gamma-dev-processed-images"
+  TF_VAR_web_instance_type: "t3.micro"
+  TF_VAR_app_instance_type: "t3.micro"
+  TF_VAR_web_desired_capacity: "2"
+  TF_VAR_web_min_size: "1"
+  TF_VAR_web_max_size: "3"
+  TF_VAR_app_desired_capacity: "2"
+  TF_VAR_app_min_size: "1"
+  TF_VAR_app_max_size: "3"
 
 cache:
   paths:
-    - ${TF_ROOT}/.terraform
+    - .terraform
 
 before_script:
-  - cd ${TF_ROOT}
+  - echo "Current directory: $(pwd)"
+  - echo "Listing Terraform files:"
+  - ls -la *.tf 2>/dev/null || echo "No tf files found"
   - terraform init
 
 terraform-fmt:
@@ -34,7 +46,7 @@ terraform-plan:
     - terraform plan -out=tfplan
   artifacts:
     paths:
-      - ${TF_ROOT}/tfplan
+      - tfplan
   only:
     - merge_requests
     - main
@@ -46,6 +58,8 @@ terraform-apply:
   only:
     - main
   when: manual
+  environment:
+    name: production
 
 terraform-apply-dev:
   stage: apply
@@ -54,3 +68,5 @@ terraform-apply-dev:
   only:
     - develop
   when: manual
+  environment:
+    name: development
