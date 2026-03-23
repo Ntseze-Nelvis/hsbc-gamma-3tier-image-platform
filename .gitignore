@@ -40,3 +40,53 @@ terraform.rc
 # Ignore OS files
 .DS_Store
 Thumbs.db
+
+# Local terraform files
+terraform.tfvars
+*.tfvars
+*.tfvars.json
+.terraform.lock.hcl
+
+# Local terraform state
+terraform.tfstate
+terraform.tfstate.backup
+
+# Local terraform directories
+.terraform/
+
+# Scripts with sensitive data
+add-gitlab-variables.sh
+get-project-id.sh
+fix-*.sh
+*.sh
+
+# Sensitive files
+*.pem
+*.key
+*.secret
+*.token
+
+# Local configuration
+.terraformrc
+terraform.rc
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+terraform.tfvars.json
+.terraform.lock.hcl
+
+# Script outputs
+*.json
+*.txt
+deployment-info.txt
+plan.txt
+tfplan
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
