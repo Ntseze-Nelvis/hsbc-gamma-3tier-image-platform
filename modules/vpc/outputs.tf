@@ -26,7 +26,7 @@ output "public_route_table_id" {
 # output for private route table ID
 output "private_route_table_id" {
   value = aws_route_table.private-rt.id
-} 
+}
 
 # output for public subnet CIDRs
 output "public_subnet_cidrs" {

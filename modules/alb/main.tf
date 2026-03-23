@@ -11,24 +11,24 @@ resource "aws_lb" "this" {
 }
 
 resource "aws_lb_target_group" "web_tg" {
-  name     = "${var.name}-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
+  name        = "${var.name}-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
   target_type = "instance"
 
   health_check {
-    path = "/"
+    path     = "/"
     protocol = "HTTP"
   }
 }
 
 # NEW: App target group for port 5000
 resource "aws_lb_target_group" "app_tg" {
-  name     = "${var.name}-app-tg"
-  port     = 5000
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
+  name        = "${var.name}-app-tg"
+  port        = 5000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
   target_type = "instance"
 
   health_check {

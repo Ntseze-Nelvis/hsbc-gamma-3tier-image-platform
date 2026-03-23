@@ -51,7 +51,7 @@ resource "aws_route" "public-route" {
   route_table_id         = aws_route_table.public-rt.id
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.cloudreality-vpc.id
-} 
+}
 
 # create private subnet
 resource "aws_subnet" "private-subnet" {
@@ -86,12 +86,12 @@ resource "aws_route_table_association" "private-rt-assoc" {
 
 # create nat gateway 
 resource "aws_eip" "nat-eip" {
-domain = "vpc"
+  domain = "vpc"
 
   tags = {
     Name = "${var.project_name}-nat-eip"
   }
-} 
+}
 
 resource "aws_nat_gateway" "nat-gateway" {
   allocation_id = aws_eip.nat-eip.id
@@ -108,6 +108,6 @@ resource "aws_route" "private-route" {
   route_table_id         = aws_route_table.private-rt.id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.nat-gateway.id
-} 
+}
 
 

@@ -1,12 +1,12 @@
 variable "ami_id" {
-    description = "ami id"
-    type = string
+  description = "ami id"
+  type        = string
 }
 
 variable "instance_type" {
-    description = "instance type"
-    type = string
-    default = "t3.micro"
+  description = "instance type"
+  type        = string
+  default     = "t3.micro"
 
 }
 variable "public_subnet_ids" {
@@ -16,12 +16,12 @@ variable "public_subnet_ids" {
 
 variable "web_sg_id" {
   description = "web security group id"
-  type = string
+  type        = string
 }
 
 variable "target_group_arn" {
   description = "target group arn"
-  type = string
+  type        = string
 }
 
 

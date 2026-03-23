@@ -3,7 +3,7 @@ resource "aws_autoscaling_group" "web_asg" {
   min_size            = 2
   max_size            = 4
   desired_capacity    = 2
-  vpc_zone_identifier = var.public_subnet_ids  # Changed from var.aws_vpc.cloudreality-vpc.id
+  vpc_zone_identifier = var.public_subnet_ids # Changed from var.aws_vpc.cloudreality-vpc.id
 
   target_group_arns = [var.target_group_arn]
 
