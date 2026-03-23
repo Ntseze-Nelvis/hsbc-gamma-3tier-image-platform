@@ -72,3 +72,5 @@ module "monitoring" {
   web_asg_name   = module.web.web_asg_name
   app_asg_name   = module.app.app_asg_name
 }
+
+# this is where we will add future modules like auto-scaling, RDS, etc.
