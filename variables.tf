@@ -102,6 +102,11 @@ variable "ami_id" {
   type        = string
 }
 
+variable "profile" {
+  description = " profile var"
+  type = string
+}
+
 # final changes at the end of the file
 # final changes at the end of the file
 # final changes at the end of the file

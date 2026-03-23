@@ -1,71 +1,69 @@
+image:
+  name: hashicorp/terraform:1.6
+  entrypoint: [""]
+
 stages:
   - validate
+  - fmt
   - plan
   - apply
 
 variables:
   TF_ROOT: "."
-  TF_VERSION: "1.5.0"
-  TF_VAR_aws_region: "eu-north-1"
-  TF_VAR_environment: "dev"
-  TF_VAR_project_name: "hsbc-gamma-dev"
-  TF_VAR_raw_images_bucket_name: "hsbc-gamma-dev-raw-images"
-  TF_VAR_processed_images_bucket_name: "hsbc-gamma-dev-processed-images"
-  TF_VAR_web_instance_type: "t3.micro"
-  TF_VAR_app_instance_type: "t3.micro"
-  TF_VAR_web_desired_capacity: "2"
-  TF_VAR_web_min_size: "1"
-  TF_VAR_web_max_size: "3"
-  TF_VAR_app_desired_capacity: "2"
-  TF_VAR_app_min_size: "1"
-  TF_VAR_app_max_size: "3"
-
-cache:
-  paths:
-    - .terraform
+  TF_IN_AUTOMATION: "true"
 
 before_script:
-  - cd ${TF_ROOT}
-  - terraform init
+  - cd $TF_ROOT
+  - terraform --version
 
-terraform-fmt:
+  # 🔥 INIT WITH REMOTE BACKEND (IMPORTANT)
+  - terraform init \
+      -backend-config="bucket=$TF_STATE_BUCKET" \
+      -backend-config="key=$TF_STATE_KEY" \
+      -backend-config="region=$AWS_DEFAULT_REGION"
+
+############################
+# VALIDATE
+############################
+validate:
   stage: validate
   script:
-    - cd ${TF_ROOT}
-    - terraform fmt -check -recursive
-
-terraform-validate:
-  stage: validate
-  script:
-    - cd ${TF_ROOT}
     - terraform validate
+  only:
+    - merge_requests
+    - main
 
-terraform-plan:
+############################
+# FORMAT
+############################
+fmt:
+  stage: fmt
+  script:
+    - terraform fmt -check -recursive
+  only:
+    - merge_requests
+    - main
+
+############################
+# PLAN
+############################
+plan:
   stage: plan
   script:
-    - cd ${TF_ROOT}
     - terraform plan -out=tfplan
   artifacts:
     paths:
       - tfplan
   only:
-    - merge_requests
     - main
 
-terraform-apply:
+############################
+# APPLY
+############################
+apply:
   stage: apply
   script:
-    - cd ${TF_ROOT}
     - terraform apply -auto-approve tfplan
+  when: manual
   only:
     - main
-  when: manual
-
-terraform-apply-dev:
-  stage: apply
-  script:
-    - cd ${TF_ROOT}
-    - terraform apply -auto-approve
-  only:
-    - develop
-  when: manual

@@ -9,6 +9,10 @@ terraform {
 
 # Configure the AWS Provider
 provider "aws" {
-  region  = "eu-north-1"
-  profile = "cloudreality"
+  region  = var.aws_region
+  profile = var.profile
+}
+
+terraform {
+  backend "s3" {}
 }
