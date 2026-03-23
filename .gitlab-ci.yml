@@ -11,11 +11,30 @@ stages:
 variables:
   TF_ROOT: "."
   TF_IN_AUTOMATION: "true"
-  TF_VAR_aws_region: "eu-north-1"
-  TF_VAR_environment: "dev"
+  
+  # All required Terraform variables
   TF_VAR_project_name: "hsbc-gamma-dev"
+  TF_VAR_environment: "dev"
+  TF_VAR_aws_region: "eu-north-1"
+  TF_VAR_vpc_cidr: "10.0.0.0/16"
+  TF_VAR_azs: '["eu-north-1a", "eu-north-1b"]'
+  TF_VAR_public_subnets: '["10.0.1.0/24", "10.0.2.0/24"]'
+  TF_VAR_private_subnets: '["10.0.3.0/24", "10.0.4.0/24"]'
   TF_VAR_raw_images_bucket_name: "hsbc-gamma-dev-raw-images"
   TF_VAR_processed_images_bucket_name: "hsbc-gamma-dev-processed-images"
+  TF_VAR_web_instance_type: "t3.micro"
+  TF_VAR_app_instance_type: "t3.micro"
+  TF_VAR_web_port: "80"
+  TF_VAR_app_port: "5000"
+  TF_VAR_key_pair_name: "hsbc-gamma-dev-key"
+  TF_VAR_web_desired_capacity: "2"
+  TF_VAR_web_min_size: "1"
+  TF_VAR_web_max_size: "3"
+  TF_VAR_app_desired_capacity: "2"
+  TF_VAR_app_min_size: "1"
+  TF_VAR_app_max_size: "3"
+  TF_VAR_enable_cloudwatch_logs: "true"
+  TF_VAR_ami_id: "ami-0aaa636894689fa47"
 
 cache:
   paths:
@@ -26,10 +45,9 @@ before_script:
   - terraform --version
   - |
     terraform init \
-      -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
-      -backend-config="key=3tier-image-platform/terraform.tfstate" \
-      -backend-config="region=eu-north-1" \
-      -backend-config="encrypt=true" \
+      -backend-config="bucket=${TF_STATE_BUCKET}" \
+      -backend-config="key=${TF_STATE_KEY}" \
+      -backend-config="region=${TF_STATE_REGION}" \
       -reconfigure
 
 validate:
