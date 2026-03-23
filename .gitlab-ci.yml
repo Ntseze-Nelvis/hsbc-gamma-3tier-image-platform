@@ -16,11 +16,12 @@ before_script:
   - cd $TF_ROOT
   - terraform --version
 
-  # 🔥 INIT WITH REMOTE BACKEND (IMPORTANT)
-  - terraform init \
-      -backend-config="bucket=$TF_STATE_BUCKET" \
-      -backend-config="key=$TF_STATE_KEY" \
-      -backend-config="region=$AWS_DEFAULT_REGION"
+  # 🔥 FIXED INIT
+  - |
+    terraform init \
+      -backend-config="bucket=${TF_STATE_BUCKET}" \
+      -backend-config="key=${TF_STATE_KEY}" \
+      -backend-config="region=${AWS_DEFAULT_REGION}"
 
 ############################
 # VALIDATE
