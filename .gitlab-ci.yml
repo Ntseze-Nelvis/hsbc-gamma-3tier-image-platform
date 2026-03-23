@@ -27,7 +27,7 @@ cache:
 before_script:
   - echo "Current directory: $(pwd)"
   - echo "Listing Terraform files:"
-  - ls -la *.tf 2>/dev/null || echo "No tf files found"
+  - ls -la *.tf
   - terraform init
 
 terraform-fmt:
