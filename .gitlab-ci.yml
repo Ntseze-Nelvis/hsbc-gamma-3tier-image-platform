@@ -11,43 +11,38 @@ stages:
 variables:
   TF_ROOT: "."
   TF_IN_AUTOMATION: "true"
+  TF_VAR_aws_region: "eu-north-1"
+  TF_VAR_environment: "dev"
+  TF_VAR_project_name: "hsbc-gamma-dev"
+
+cache:
+  paths:
+    - .terraform
 
 before_script:
-  - cd $TF_ROOT
+  - cd ${TF_ROOT}
   - terraform --version
-
-  # 🔥 FIXED INIT
   - |
     terraform init \
       -backend-config="bucket=${TF_STATE_BUCKET}" \
       -backend-config="key=${TF_STATE_KEY}" \
-      -backend-config="region=${AWS_DEFAULT_REGION}"
+      -backend-config="region=${TF_STATE_REGION}" \
+      -reconfigure
 
-############################
-# VALIDATE
-############################
 validate:
   stage: validate
   script:
     - terraform validate
   only:
-    - merge_requests
     - main
 
-############################
-# FORMAT
-############################
 fmt:
   stage: fmt
   script:
     - terraform fmt -check -recursive
   only:
-    - merge_requests
     - main
 
-############################
-# PLAN
-############################
 plan:
   stage: plan
   script:
@@ -58,9 +53,6 @@ plan:
   only:
     - main
 
-############################
-# APPLY
-############################
 apply:
   stage: apply
   script:

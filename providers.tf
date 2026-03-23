@@ -7,12 +7,6 @@ terraform {
   }
 }
 
-# Configure the AWS Provider
 provider "aws" {
-  region  = var.aws_region
-  profile = var.profile
-}
-
-terraform {
-  backend "s3" {}
+  region = var.aws_region
 }
