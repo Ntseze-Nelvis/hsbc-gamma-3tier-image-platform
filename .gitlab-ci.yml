@@ -60,6 +60,3 @@ apply:
   when: manual
   only:
     - main
-
-
-    
