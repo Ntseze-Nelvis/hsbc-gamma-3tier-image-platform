@@ -25,24 +25,25 @@ cache:
     - .terraform
 
 before_script:
-  - echo "Current directory: $(pwd)"
-  - echo "Listing Terraform files:"
-  - ls -la *.tf
+  - cd ${TF_ROOT}
   - terraform init
 
 terraform-fmt:
   stage: validate
   script:
+    - cd ${TF_ROOT}
     - terraform fmt -check -recursive
 
 terraform-validate:
   stage: validate
   script:
+    - cd ${TF_ROOT}
     - terraform validate
 
 terraform-plan:
   stage: plan
   script:
+    - cd ${TF_ROOT}
     - terraform plan -out=tfplan
   artifacts:
     paths:
@@ -54,19 +55,17 @@ terraform-plan:
 terraform-apply:
   stage: apply
   script:
+    - cd ${TF_ROOT}
     - terraform apply -auto-approve tfplan
   only:
     - main
   when: manual
-  environment:
-    name: production
 
 terraform-apply-dev:
   stage: apply
   script:
+    - cd ${TF_ROOT}
     - terraform apply -auto-approve
   only:
     - develop
   when: manual
-  environment:
-    name: development
