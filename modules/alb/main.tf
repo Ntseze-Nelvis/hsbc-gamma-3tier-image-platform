@@ -75,3 +75,6 @@ resource "aws_lb_listener_rule" "app_rule" {
     }
   }
 }
+
+# Output the ALB ARN suffix for use in other modules
+# This allows the monitoring module to reference the ALB without hardcoding the ARN
