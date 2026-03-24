@@ -24,7 +24,7 @@ env:
 
 jobs:
   terraform-fmt:
-    name: 'Ì¥ç Format Check'
+    name: 'Format Check'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
 
   terraform-validate:
-    name: '‚úÖ Validate'
+    name: 'Validate'
     runs-on: ubuntu-latest
     needs: terraform-fmt
     steps:
@@ -49,7 +49,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
 
   terraform-plan:
-    name: 'Ì≥ã Plan'
+    name: 'Plan'
     runs-on: ubuntu-latest
     needs: terraform-validate
     if: github.event_name == 'pull_request'
@@ -69,7 +69,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
 
   terraform-apply:
-    name: 'Ì∫Ä Apply'
+    name: 'Apply'
     runs-on: ubuntu-latest
     needs: terraform-validate
     if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
@@ -91,12 +91,12 @@ jobs:
       - run: terraform apply -auto-approve tfplan
         working-directory: ${{ env.WORKING_DIR }}
       - run: |
-          echo "‚úÖ Deployment complete!"
-          echo "Ìºê Application URL: http://$(terraform output -raw alb_dns_name)"
+          echo "Deployment complete!"
+          echo "Application URL: http://$(terraform output -raw alb_dns_name)"
         working-directory: ${{ env.WORKING_DIR }}
 
   terraform-destroy:
-    name: 'Ì≤Ä Destroy'
+    name: 'Destroy'
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
     environment: production
@@ -120,5 +120,5 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
       - run: terraform destroy -auto-approve
         working-directory: ${{ env.WORKING_DIR }}
-      - run: echo "‚úÖ Infrastructure destroyed!"
+      - run: echo "Infrastructure destroyed!"
         working-directory: ${{ env.WORKING_DIR }}
