@@ -41,6 +41,7 @@ module "alb" {
 
 # web module root main.tf
 module "web" {
+  project_name      = var.project_name
   source = "./modules/web"
 
   ami_id            = var.ami_id
@@ -52,6 +53,7 @@ module "web" {
 
 # app module root main.tf
 module "app" {
+  project_name      = var.project_name
   source = "./modules/app"
 
   ami_id                = var.ami_id

@@ -38,3 +38,7 @@ variable "target_group_arn" {
   description = "ARN of the app target group"
   type        = string
 }
+variable "project_name" {
+  description = "Project name for naming resources"
+  type        = string
+}

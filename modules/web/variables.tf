@@ -25,3 +25,8 @@ variable "target_group_arn" {
 }
 
 
+
+variable "project_name" {
+  description = "Project name for naming resources"
+  type        = string
+}

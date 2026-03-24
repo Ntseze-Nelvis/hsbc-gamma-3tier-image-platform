@@ -1,12 +1,10 @@
-resource "aws_autoscaling_group" "app_asg" {
-  name             = "app-asg"
-  min_size         = 2
-  max_size         = 4
-  desired_capacity = 2
-
+﻿resource "aws_autoscaling_group" "app_asg" {
+  name                = "${var.project_name}-app-asg"
+  min_size            = 2
+  max_size            = 4
+  desired_capacity    = 2
   vpc_zone_identifier = var.private_subnet_ids
 
-  # NEW: Add target group attachment
   target_group_arns = [var.target_group_arn]
 
   launch_template {
@@ -16,7 +14,7 @@ resource "aws_autoscaling_group" "app_asg" {
 
   tag {
     key                 = "Name"
-    value               = "app-asg-instance"
+    value               = "${var.project_name}-app-instance"
     propagate_at_launch = true
   }
 }

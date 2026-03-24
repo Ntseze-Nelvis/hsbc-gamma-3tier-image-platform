@@ -2,7 +2,7 @@
 # Global / Project Settings
 ############################
 
-project_name = "hsbc-gamma-useast1"
+project_name = "hsbc-gamma-v2"
 environment  = "dev"
 aws_region   = "us-east-1"
 
@@ -35,11 +35,11 @@ web_port = 80
 app_port = 5000
 
 ############################
-# S3 Buckets - Unique names for us-east-1
+# S3 Buckets - Unique names
 ############################
 
-raw_images_bucket_name       = "hsbc-gamma-useast1-raw"
-processed_images_bucket_name = "hsbc-gamma-useast1-processed"
+raw_images_bucket_name       = "hsbc-gamma-v2-raw"
+processed_images_bucket_name = "hsbc-gamma-v2-processed"
 
 ############################
 # EC2 Configuration
@@ -47,7 +47,7 @@ processed_images_bucket_name = "hsbc-gamma-useast1-processed"
 
 web_instance_type = "t3.micro"
 app_instance_type = "t3.micro"
-key_pair_name     = "hsbc-gamma-dev-key"
+key_pair_name     = "hsbc-gamma-v2-key"
 
 ############################
 # Auto Scaling
