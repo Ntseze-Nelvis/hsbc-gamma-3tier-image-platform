@@ -1,5 +1,5 @@
 COMPLETE TERRAFORM CONFIGURATION
-Generated on: Mon, Mar 23, 2026  5:10:00 PM
+Generated on: Tue, Mar 24, 2026 12:29:53 AM
 ================================================================================
 
 ROOT MODULE FILES
@@ -84,6 +84,8 @@ module "monitoring" {
   app_asg_name   = module.app.app_asg_name
 }
 
+# this is where we will add future modules like auto-scaling, RDS, etc.
+
 
 ================================================================================
 FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/outputs.tf
@@ -129,8 +131,7 @@ terraform {
 
 # Configure the AWS Provider
 provider "aws" {
-  region  = "eu-north-1"
-  profile = "cloudreality"
+  region = var.aws_region
 }
 
 
@@ -245,7 +246,6 @@ variable "ami_id" {
 
 # final changes at the end of the file
 # final changes at the end of the file
-# final changes at the end of the file
 
 
 
@@ -269,6 +269,7 @@ FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3ti
 project_name = "hsbc-gamma-dev"
 environment  = "dev"
 aws_region   = "eu-north-1"
+#profile      = "cloudreality"
 
 
 ############################
@@ -406,7 +407,7 @@ resource "aws_route" "public-route" {
   route_table_id         = aws_route_table.public-rt.id
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = aws_internet_gateway.cloudreality-vpc.id
-} 
+}
 
 # create private subnet
 resource "aws_subnet" "private-subnet" {
@@ -441,12 +442,12 @@ resource "aws_route_table_association" "private-rt-assoc" {
 
 # create nat gateway 
 resource "aws_eip" "nat-eip" {
-domain = "vpc"
+  domain = "vpc"
 
   tags = {
     Name = "${var.project_name}-nat-eip"
   }
-} 
+}
 
 resource "aws_nat_gateway" "nat-gateway" {
   allocation_id = aws_eip.nat-eip.id
@@ -463,7 +464,7 @@ resource "aws_route" "private-route" {
   route_table_id         = aws_route_table.private-rt.id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.nat-gateway.id
-} 
+}
 
 
 
@@ -501,7 +502,7 @@ output "public_route_table_id" {
 # output for private route table ID
 output "private_route_table_id" {
   value = aws_route_table.private-rt.id
-} 
+}
 
 # output for public subnet CIDRs
 output "public_subnet_cidrs" {
@@ -693,7 +694,7 @@ output "alb_sg_id" {
 
 output "web_sg_id" {
   description = "The ID of the web tier security group"
-  value       = aws_security_group.web_sg.id  # Changed from ec2_sg to web_sg
+  value       = aws_security_group.web_sg.id # Changed from ec2_sg to web_sg
 }
 
 output "app_sg_id" {
@@ -757,7 +758,7 @@ resource "aws_security_group" "alb_sg" {
 }
 
 # create security group for web tier instances
-resource "aws_security_group" "web_sg" {  # Renamed from ec2_sg to web_sg for consistency
+resource "aws_security_group" "web_sg" { # Renamed from ec2_sg to web_sg for consistency
   name        = "${var.project_name}-web-sg"
   description = "Security group for web tier EC2 instances"
   vpc_id      = var.vpc_id
@@ -789,12 +790,12 @@ resource "aws_security_group" "app_sg" {
   vpc_id      = var.vpc_id
 
   ingress {
-    from_port       = 5000
-    to_port         = 5000
-    protocol        = "tcp"
+    from_port = 5000
+    to_port   = 5000
+    protocol  = "tcp"
     security_groups = [
       aws_security_group.web_sg.id,
-      aws_security_group.alb_sg.id  # ADD THIS LINE to allow ALB traffic
+      aws_security_group.alb_sg.id # ADD THIS LINE to allow ALB traffic
     ]
   }
 
@@ -1135,7 +1136,7 @@ variable "raw_bucket_name" {
   type = string
 }
 
-variable "processed_images_bucket_name" {  # Keep this one (matches root variable)
+variable "processed_images_bucket_name" { # Keep this one (matches root variable)
   type = string
 }
 
@@ -1170,24 +1171,24 @@ resource "aws_lb" "this" {
 }
 
 resource "aws_lb_target_group" "web_tg" {
-  name     = "${var.name}-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
+  name        = "${var.name}-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
   target_type = "instance"
 
   health_check {
-    path = "/"
+    path     = "/"
     protocol = "HTTP"
   }
 }
 
 # NEW: App target group for port 5000
 resource "aws_lb_target_group" "app_tg" {
-  name     = "${var.name}-app-tg"
-  port     = 5000
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
+  name        = "${var.name}-app-tg"
+  port        = 5000
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
   target_type = "instance"
 
   health_check {
@@ -1262,23 +1263,23 @@ FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3ti
 ================================================================================
 
 variable "name" {
-    description = "The name of the ALB"
-    type = string
+  description = "The name of the ALB"
+  type        = string
 }
 
 variable "vpc_id" {
-    description = "The ID of the VPC where the ALB will be deployed"
-    type = string       
+  description = "The ID of the VPC where the ALB will be deployed"
+  type        = string
 }
 
 variable "public_subnet_ids" {
-    default = [ "value" ]
-  type = list(string)
+  default = ["value"]
+  type    = list(string)
 }
 
 variable "alb_sg_id" {
-    description = "The ID of the security group for the ALB"
-  type = string
+  description = "The ID of the security group for the ALB"
+  type        = string
 }
 
 
@@ -1298,7 +1299,7 @@ resource "aws_autoscaling_group" "web_asg" {
   min_size            = 2
   max_size            = 4
   desired_capacity    = 2
-  vpc_zone_identifier = var.public_subnet_ids  # Changed from var.aws_vpc.cloudreality-vpc.id
+  vpc_zone_identifier = var.public_subnet_ids # Changed from var.aws_vpc.cloudreality-vpc.id
 
   target_group_arns = [var.target_group_arn]
 
@@ -1354,14 +1355,14 @@ FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3ti
 ================================================================================
 
 variable "ami_id" {
-    description = "ami id"
-    type = string
+  description = "ami id"
+  type        = string
 }
 
 variable "instance_type" {
-    description = "instance type"
-    type = string
-    default = "t3.micro"
+  description = "instance type"
+  type        = string
+  default     = "t3.micro"
 
 }
 variable "public_subnet_ids" {
@@ -1371,12 +1372,12 @@ variable "public_subnet_ids" {
 
 variable "web_sg_id" {
   description = "web security group id"
-  type = string
+  type        = string
 }
 
 variable "target_group_arn" {
   description = "target group arn"
-  type = string
+  type        = string
 }
 
 
@@ -1567,13 +1568,13 @@ FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3ti
 ================================================================================
 
 resource "aws_autoscaling_group" "app_asg" {
-  name                = "app-asg"
-  min_size            = 2
-  max_size            = 4
-  desired_capacity    = 2
+  name             = "app-asg"
+  min_size         = 2
+  max_size         = 4
+  desired_capacity = 2
 
   vpc_zone_identifier = var.private_subnet_ids
-  
+
   # NEW: Add target group attachment
   target_group_arns = [var.target_group_arn]
 
@@ -2057,12 +2058,12 @@ variable "alb_arn_suffix" {
 
 variable "web_asg_name" {
   description = "web asg name"
-  type = string
+  type        = string
 }
 
 variable "app_asg_name" {
   description = "app asg name"
-  type = string
+  type        = string
 }
 
 

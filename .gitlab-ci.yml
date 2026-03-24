@@ -53,7 +53,7 @@ apply:
     - terraform apply -auto-approve tfplan
     - echo "âœ… Deployment complete!"
     - ALB_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "pending")
-    - echo "í¼ URL: http://$ALB_URL"
+    - echo "ðŸŒ URL: http://$ALB_URL"
   when: manual
   only:
     - main
@@ -64,7 +64,10 @@ destroy:
   stage: destroy
   script:
     - echo "âš ï¸  Destroying all infrastructure..."
-    - for bucket in $(terraform state list 2>/dev/null | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do aws s3 rm "s3://$bucket" --recursive || true; done
+    - |
+      for bucket in $(terraform state list 2>/dev/null | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do
+        aws s3 rm "s3://$bucket" --recursive || true
+      done
     - terraform destroy -auto-approve
     - echo "âœ… Infrastructure destroyed!"
   when: manual

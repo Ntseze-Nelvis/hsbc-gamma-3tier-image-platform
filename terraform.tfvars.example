@@ -1,80 +1,79 @@
+# ============================================
+# HSBC Gamma Dev - 3-Tier Image Platform
+# Terraform Variables Configuration
+# ============================================
+# Copy this file to terraform.tfvars and update values as needed
+# DO NOT commit terraform.tfvars to version control!
+
 ############################
 # Global / Project Settings
 ############################
-
-project_name = "hsbc-gamma-dev"
-environment  = "dev"
-aws_region   = "eu-north-1"
-
+project_name = "hsbc-gamma-dev"      # Project identifier
+environment  = "dev"                  # Environment (dev/staging/prod)
+aws_region   = "eu-north-1"           # AWS region for resources
 
 ############################
 # Networking (VPC)
 ############################
+vpc_cidr = "10.0.0.0/16"             # VPC CIDR block
 
-vpc_cidr = "10.0.0.0/16"
-
-azs = [
+azs = [                               # Availability Zones
   "eu-north-1a",
   "eu-north-1b"
 ]
 
-public_subnets = [
+public_subnets = [                    # Public subnet CIDRs
   "10.0.1.0/24",
   "10.0.2.0/24"
 ]
 
-private_subnets = [
+private_subnets = [                   # Private subnet CIDRs
   "10.0.3.0/24",
   "10.0.4.0/24"
 ]
 
-
 ############################
 # Application Ports
 ############################
-
-web_port = 80
-app_port = 5000
-
+web_port = 80                         # Web tier port
+app_port = 5000                       # App tier port
 
 ############################
-# S3 Buckets (Used by IAM)
+# S3 Buckets
 ############################
-
 raw_images_bucket_name       = "hsbc-gamma-dev-raw-images"
 processed_images_bucket_name = "hsbc-gamma-dev-processed-images"
 
+############################
+# EC2 Configuration
+############################
+web_instance_type = "t3.micro"       # Web tier instance type
+app_instance_type = "t3.micro"       # App tier instance type
+key_pair_name     = "hsbc-gamma-dev-key"  # EC2 key pair name
 
 ############################
-# EC2 Configuration (Future)
+# Auto Scaling Configuration
 ############################
+web_desired_capacity = 2              # Web ASG desired instances
+web_min_size         = 1              # Web ASG minimum instances
+web_max_size         = 3              # Web ASG maximum instances
 
-web_instance_type = "t3.micro"
-app_instance_type = "t3.micro"
-
-key_pair_name = "hsbc-gamma-dev-key"
-
-
-############################
-# Auto Scaling (Optional)
-############################
-
-web_desired_capacity = 2
-web_min_size         = 1
-web_max_size         = 3
-
-app_desired_capacity = 2
-app_min_size         = 1
-app_max_size         = 3
-
+app_desired_capacity = 2              # App ASG desired instances
+app_min_size         = 1              # App ASG minimum instances
+app_max_size         = 3              # App ASG maximum instances
 
 ############################
 # Logging & Monitoring
 ############################
-
-enable_cloudwatch_logs = true
+enable_cloudwatch_logs = true         # Enable CloudWatch logging
 
 ############################
-# AMI Configuration (Future)
-ami_id = "ami-0aaa636894689fa47" # Amazon Linux 3 AMI (HVM), SSD Volume Type - us-east-1
+# AMI Configuration
 ############################
+# Amazon Linux 2023 AMI for eu-north-1
+ami_id = "ami-0aaa636894689fa47"
+
+# ============================================
+# Note: For CI/CD pipeline, these values should be set as GitLab CI/CD variables
+# with the prefix TF_VAR_ (e.g., TF_VAR_project_name)
+# ============================================
