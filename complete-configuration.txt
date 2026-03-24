@@ -1,5 +1,5 @@
 COMPLETE TERRAFORM CONFIGURATION
-Generated on: Tue, Mar 24, 2026  2:25:55 PM
+Generated on: Tue, Mar 24, 2026  7:17:30 PM
 ================================================================================
 
 ROOT MODULE FILES
@@ -345,7 +345,7 @@ enable_cloudwatch_logs = true
 
 ############################
 # AMI Configuration (Future)
-ami_id = "ami-0aaa636894689fa47" # Amazon Linux 3 AMI (HVM), SSD Volume Type - us-east-1
+ami_id = "ami-02dfbd4ff395f2a1b" # Amazon Linux 3 AMI (HVM), SSD Volume Type - us-east-1
 ############################
 
 
@@ -1513,7 +1513,7 @@ EOF
 cat << 'EOF' > /var/www/html/upload-proxy.php
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
-    $url = 'http://internal-hsbc-gamma-dev-alb-1872922200.north-1.elb.amazonaws.com/upload';
+    $url = 'http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload';
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -1548,8 +1548,8 @@ cat << 'EOF' > /etc/httpd/conf.d/proxy.conf
     ProxyPreserveHost On
     
     <Location /upload>
-        ProxyPass http://internal-hsbc-gamma-dev-alb-1872922200.north-1.elb.amazonaws.com/upload
-        ProxyPassReverse http://internal-hsbc-gamma-dev-alb-1872922200.north-1.elb.amazonaws.com/upload
+        ProxyPass http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload
+        ProxyPassReverse http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload
     </Location>
 </IfModule>
 EOF
@@ -1731,7 +1731,7 @@ PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', 'hsbc-gamma-dev-processed-
 
 # Initialize S3 client
 try:
-    s3 = boto3.client('s3', region_name='north-1')
+    s3 = boto3.client('s3', region_name='eu-north-1')
     logger.info("S3 client initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize S3 client: {str(e)}")

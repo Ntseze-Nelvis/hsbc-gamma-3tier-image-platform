@@ -33,6 +33,12 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
       - run: terraform fmt -check -recursive
         working-directory: ${{ env.WORKING_DIR }}
+      - run: |
+          # Check if any .tfvars files are being formatted (they shouldn't be)
+          if [ -f terraform.tfvars ]; then
+            echo "terraform.tfvars exists but will be ignored by fmt"
+          fi
+        working-directory: ${{ env.WORKING_DIR }}
 
   terraform-validate:
     name: 'Validate'
