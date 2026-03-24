@@ -1,8 +1,8 @@
-############################
+﻿############################
 # Global / Project Settings
 ############################
 
-project_name = "hsbc-gamma-dev-useast1"
+project_name = "hsbc-gamma-useast1"
 environment  = "dev"
 aws_region   = "us-east-1"
 
@@ -38,8 +38,8 @@ app_port = 5000
 # S3 Buckets - Unique names for us-east-1
 ############################
 
-raw_images_bucket_name       = "hsbc-gamma-dev-raw-images-useast1"
-processed_images_bucket_name = "hsbc-gamma-dev-processed-images-useast1"
+raw_images_bucket_name       = "hsbc-gamma-useast1-raw"
+processed_images_bucket_name = "hsbc-gamma-useast1-processed"
 
 ############################
 # EC2 Configuration
