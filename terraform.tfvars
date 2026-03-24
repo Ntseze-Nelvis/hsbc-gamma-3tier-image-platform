@@ -4,7 +4,7 @@
 
 project_name = "hsbc-gamma-dev"
 environment  = "dev"
-aws_region   = "eu-north-1"
+aws_region   = "us-east-1"
 #profile      = "cloudreality"
 
 
@@ -15,8 +15,8 @@ aws_region   = "eu-north-1"
 vpc_cidr = "10.0.0.0/16"
 
 azs = [
-  "eu-north-1a",
-  "eu-north-1b"
+  "us-east-1a",
+  "us-east-1b"
 ]
 
 public_subnets = [
@@ -77,5 +77,5 @@ enable_cloudwatch_logs = true
 
 ############################
 # AMI Configuration (Future)
-ami_id = "ami-0aaa636894689fa47" # Amazon Linux 3 AMI (HVM), SSD Volume Type - us-east-1
+ami_id = "ami-02dfbd4ff395f2a1b" # Amazon Linux 3 AMI (HVM), SSD Volume Type - us-east-1
 ############################
