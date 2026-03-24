@@ -77,7 +77,7 @@ data "aws_iam_policy_document" "app_s3_policy" {
     ]
 
     resources = [
-      "arn:aws:kms:eu-north-1:${data.aws_caller_identity.current.account_id}:key/*"
+      "arn:aws:kms:us-east-1:${data.aws_caller_identity.current.account_id}:key/*"
     ]
   }
 }

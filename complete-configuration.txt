@@ -1,5 +1,5 @@
 COMPLETE TERRAFORM CONFIGURATION
-Generated on: Tue, Mar 24, 2026  7:09:54 AM
+Generated on: Tue, Mar 24, 2026  2:25:55 PM
 ================================================================================
 
 ROOT MODULE FILES
@@ -85,6 +85,7 @@ module "monitoring" {
 }
 
 # this is where we will add future modules like auto-scaling, RDS, etc.
+# mysql module root main.tf
 
 
 ================================================================================
@@ -130,9 +131,11 @@ terraform {
 }
 
 # Configure the AWS Provider
+# For GitHub Actions: uses AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY from environment
+# For local development: uncomment the profile line
 provider "aws" {
-  region  = var.aws_region
-  profile = "cloudreality"
+  region = var.aws_region
+  # profile = "cloudreality"  # Uncomment for local development
 }
 
 
@@ -269,7 +272,7 @@ FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3ti
 
 project_name = "hsbc-gamma-dev"
 environment  = "dev"
-aws_region   = "eu-north-1"
+aws_region   = "us-east-1"
 #profile      = "cloudreality"
 
 
@@ -280,8 +283,8 @@ aws_region   = "eu-north-1"
 vpc_cidr = "10.0.0.0/16"
 
 azs = [
-  "eu-north-1a",
-  "eu-north-1b"
+  "us-east-1a",
+  "us-east-1b"
 ]
 
 public_subnets = [
@@ -642,7 +645,7 @@ data "aws_iam_policy_document" "app_s3_policy" {
     ]
 
     resources = [
-      "arn:aws:kms:eu-north-1:${data.aws_caller_identity.current.account_id}:key/*"
+      "arn:aws:kms:us-east-1:${data.aws_caller_identity.current.account_id}:key/*"
     ]
   }
 }
@@ -1510,7 +1513,7 @@ EOF
 cat << 'EOF' > /var/www/html/upload-proxy.php
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
-    $url = 'http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload';
+    $url = 'http://internal-hsbc-gamma-dev-alb-1872922200.north-1.elb.amazonaws.com/upload';
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -1545,8 +1548,8 @@ cat << 'EOF' > /etc/httpd/conf.d/proxy.conf
     ProxyPreserveHost On
     
     <Location /upload>
-        ProxyPass http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload
-        ProxyPassReverse http://internal-hsbc-gamma-dev-alb-1872922200.eu-north-1.elb.amazonaws.com/upload
+        ProxyPass http://internal-hsbc-gamma-dev-alb-1872922200.north-1.elb.amazonaws.com/upload
+        ProxyPassReverse http://internal-hsbc-gamma-dev-alb-1872922200.north-1.elb.amazonaws.com/upload
     </Location>
 </IfModule>
 EOF
@@ -1728,7 +1731,7 @@ PROCESSED_BUCKET = os.environ.get('PROCESSED_BUCKET', 'hsbc-gamma-dev-processed-
 
 # Initialize S3 client
 try:
-    s3 = boto3.client('s3', region_name='eu-north-1')
+    s3 = boto3.client('s3', region_name='north-1')
     logger.info("S3 client initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize S3 client: {str(e)}")

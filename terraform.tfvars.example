@@ -10,7 +10,7 @@
 ############################
 project_name = "hsbc-gamma-dev"      # Project identifier
 environment  = "dev"                  # Environment (dev/staging/prod)
-aws_region   = "eu-north-1"           # AWS region for resources
+aws_region   = "us-east-1"           # AWS region for resources
 
 ############################
 # Networking (VPC)
@@ -18,8 +18,8 @@ aws_region   = "eu-north-1"           # AWS region for resources
 vpc_cidr = "10.0.0.0/16"             # VPC CIDR block
 
 azs = [                               # Availability Zones
-  "eu-north-1a",
-  "eu-north-1b"
+  "us-east-1a",
+  "us-east-1b"
 ]
 
 public_subnets = [                    # Public subnet CIDRs
@@ -70,7 +70,7 @@ enable_cloudwatch_logs = true         # Enable CloudWatch logging
 ############################
 # AMI Configuration
 ############################
-# Amazon Linux 2023 AMI for eu-north-1
+# Amazon Linux 2023 AMI for north-1
 ami_id = "ami-0aaa636894689fa47"
 
 # ============================================
