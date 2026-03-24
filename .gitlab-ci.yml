@@ -20,12 +20,7 @@ cache:
 before_script:
   - cd ${TF_ROOT}
   - terraform --version
-  - |
-    terraform init \
-      -backend-config="bucket=${TF_STATE_BUCKET}" \
-      -backend-config="key=${TF_STATE_KEY}" \
-      -backend-config="region=${TF_STATE_REGION}" \
-      -reconfigure
+  - terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="key=${TF_STATE_KEY}" -backend-config="region=${TF_STATE_REGION}" -reconfigure
 
 validate:
   stage: validate
@@ -57,7 +52,8 @@ apply:
   script:
     - terraform apply -auto-approve tfplan
     - echo "âœ… Deployment complete!"
-    - echo "í¼ URL: http://$(terraform output -raw alb_dns_name 2>/dev/null)"
+    - ALB_URL=$(terraform output -raw alb_dns_name 2>/dev/null || echo "pending")
+    - echo "í¼ URL: http://$ALB_URL"
   when: manual
   only:
     - main
@@ -68,10 +64,7 @@ destroy:
   stage: destroy
   script:
     - echo "âš ï¸  Destroying all infrastructure..."
-    - |
-      for bucket in $(terraform state list 2>/dev/null | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do
-        aws s3 rm "s3://$bucket" --recursive || true
-      done
+    - for bucket in $(terraform state list 2>/dev/null | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do aws s3 rm "s3://$bucket" --recursive || true; done
     - terraform destroy -auto-approve
     - echo "âœ… Infrastructure destroyed!"
   when: manual
