@@ -7,34 +7,11 @@ stages:
   - fmt
   - plan
   - apply
+  - destroy
 
 variables:
   TF_ROOT: "."
   TF_IN_AUTOMATION: "true"
-  
-  # All required Terraform variables
-  TF_VAR_project_name: "hsbc-gamma-dev"
-  TF_VAR_environment: "dev"
-  TF_VAR_aws_region: "eu-north-1"
-  TF_VAR_vpc_cidr: "10.0.0.0/16"
-  TF_VAR_azs: '["eu-north-1a", "eu-north-1b"]'
-  TF_VAR_public_subnets: '["10.0.1.0/24", "10.0.2.0/24"]'
-  TF_VAR_private_subnets: '["10.0.3.0/24", "10.0.4.0/24"]'
-  TF_VAR_raw_images_bucket_name: "hsbc-gamma-dev-raw-images"
-  TF_VAR_processed_images_bucket_name: "hsbc-gamma-dev-processed-images"
-  TF_VAR_web_instance_type: "t3.micro"
-  TF_VAR_app_instance_type: "t3.micro"
-  TF_VAR_web_port: "80"
-  TF_VAR_app_port: "5000"
-  TF_VAR_key_pair_name: "hsbc-gamma-dev-key"
-  TF_VAR_web_desired_capacity: "2"
-  TF_VAR_web_min_size: "1"
-  TF_VAR_web_max_size: "3"
-  TF_VAR_app_desired_capacity: "2"
-  TF_VAR_app_min_size: "1"
-  TF_VAR_app_max_size: "3"
-  TF_VAR_enable_cloudwatch_logs: "true"
-  TF_VAR_ami_id: "ami-0aaa636894689fa47"
 
 cache:
   paths:
@@ -71,6 +48,7 @@ plan:
   artifacts:
     paths:
       - tfplan
+    expire_in: 7 days
   only:
     - main
 
@@ -78,6 +56,27 @@ apply:
   stage: apply
   script:
     - terraform apply -auto-approve tfplan
+    - echo "âœ… Deployment complete!"
+    - echo "í¼ URL: http://$(terraform output -raw alb_dns_name 2>/dev/null)"
   when: manual
   only:
     - main
+  environment:
+    name: production
+
+destroy:
+  stage: destroy
+  script:
+    - echo "âš ï¸  Destroying all infrastructure..."
+    - |
+      for bucket in $(terraform state list 2>/dev/null | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do
+        aws s3 rm "s3://$bucket" --recursive || true
+      done
+    - terraform destroy -auto-approve
+    - echo "âœ… Infrastructure destroyed!"
+  when: manual
+  only:
+    - main
+  environment:
+    name: production
+    action: stop
