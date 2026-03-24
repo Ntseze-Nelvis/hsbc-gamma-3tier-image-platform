@@ -1,5 +1,5 @@
 COMPLETE TERRAFORM CONFIGURATION
-Generated on: Tue, Mar 24, 2026 12:29:53 AM
+Generated on: Tue, Mar 24, 2026  7:09:54 AM
 ================================================================================
 
 ROOT MODULE FILES
@@ -131,7 +131,8 @@ terraform {
 
 # Configure the AWS Provider
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
+  profile = "cloudreality"
 }
 
 
@@ -1235,6 +1236,9 @@ resource "aws_lb_listener_rule" "app_rule" {
     }
   }
 }
+
+# Output the ALB ARN suffix for use in other modules
+# This allows the monitoring module to reference the ALB without hardcoding the ARN
 
 
 ================================================================================
