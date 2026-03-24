@@ -21,6 +21,7 @@ before_script:
   - cd ${TF_ROOT}
   - terraform --version
   - terraform init -backend-config="bucket=${TF_STATE_BUCKET}" -backend-config="key=${TF_STATE_KEY}" -backend-config="region=${TF_STATE_REGION}" -reconfigure
+  - echo "✅ Terraform initialized"
 
 validate:
   stage: validate
@@ -39,7 +40,7 @@ fmt:
 plan:
   stage: plan
   script:
-    - terraform plan -out=tfplan
+    - terraform plan -var-file="terraform.tfvars" -out=tfplan
   artifacts:
     paths:
       - tfplan
