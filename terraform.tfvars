@@ -1,12 +1,10 @@
-############################
+﻿############################
 # Global / Project Settings
 ############################
 
-project_name = "hsbc-gamma-dev"
+project_name = "hsbc-gamma-dev-useast1"
 environment  = "dev"
 aws_region   = "us-east-1"
-#profile      = "cloudreality"
-
 
 ############################
 # Networking (VPC)
@@ -29,7 +27,6 @@ private_subnets = [
   "10.0.4.0/24"
 ]
 
-
 ############################
 # Application Ports
 ############################
@@ -37,27 +34,23 @@ private_subnets = [
 web_port = 80
 app_port = 5000
 
+############################
+# S3 Buckets - Unique names for us-east-1
+############################
+
+raw_images_bucket_name       = "hsbc-gamma-dev-raw-images-useast1"
+processed_images_bucket_name = "hsbc-gamma-dev-processed-images-useast1"
 
 ############################
-# S3 Buckets (Used by IAM)
-############################
-
-raw_images_bucket_name       = "hsbc-gamma-dev-raw-images"
-processed_images_bucket_name = "hsbc-gamma-dev-processed-images"
-
-
-############################
-# EC2 Configuration (Future)
+# EC2 Configuration
 ############################
 
 web_instance_type = "t3.micro"
 app_instance_type = "t3.micro"
-
-key_pair_name = "hsbc-gamma-dev-key"
-
+key_pair_name     = "hsbc-gamma-dev-key"
 
 ############################
-# Auto Scaling (Optional)
+# Auto Scaling
 ############################
 
 web_desired_capacity = 2
@@ -68,7 +61,6 @@ app_desired_capacity = 2
 app_min_size         = 1
 app_max_size         = 3
 
-
 ############################
 # Logging & Monitoring
 ############################
@@ -76,6 +68,6 @@ app_max_size         = 3
 enable_cloudwatch_logs = true
 
 ############################
-# AMI Configuration (Future)
-ami_id = "ami-02dfbd4ff395f2a1b" # Amazon Linux 3 AMI (HVM), SSD Volume Type - us-east-1
-############################
+# AMI Configuration for us-east-1
+# Amazon Linux 2023 AMI
+ami_id = "ami-02dfbd4ff395f2a1b"
