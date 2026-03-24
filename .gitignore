@@ -42,7 +42,6 @@ terraform.rc
 Thumbs.db
 
 # Local terraform files
-terraform.tfvars
 *.tfvars
 *.tfvars.json
 .terraform.lock.hcl
@@ -71,8 +70,6 @@ fix-*.sh
 terraform.rc
 *.tfstate
 *.tfstate.*
-terraform.tfvars
-terraform.tfvars.json
 .terraform.lock.hcl
 
 # Script outputs
