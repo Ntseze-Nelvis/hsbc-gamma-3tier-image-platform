@@ -52,7 +52,7 @@ apply:
   script:
     - terraform apply -auto-approve tfplan
     - echo "✅ Deployment complete!"
-    - echo "URL: http://$(terraform output -raw alb_dns_name 2>/dev/null || echo pending)"
+    - terraform output alb_dns_name
   when: manual
   only:
     - main
