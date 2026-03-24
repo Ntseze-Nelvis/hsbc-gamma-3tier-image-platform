@@ -12,9 +12,10 @@ on:
       action:
         description: 'Action to perform'
         required: true
-        default: 'apply'
+        default: 'plan'
         type: choice
         options:
+          - plan
           - apply
           - destroy
 
@@ -52,7 +53,10 @@ jobs:
     name: 'Plan'
     runs-on: ubuntu-latest
     needs: terraform-validate
-    if: github.event_name == 'pull_request'
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'plan')
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -67,12 +71,20 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
       - run: terraform plan -var-file="terraform.tfvars" -out=tfplan
         working-directory: ${{ env.WORKING_DIR }}
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.WORKING_DIR }}/tfplan
 
   terraform-apply:
     name: 'Apply'
     runs-on: ubuntu-latest
-    needs: terraform-validate
-    if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+    needs: [terraform-validate, terraform-plan]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'))
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -84,14 +96,17 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.WORKING_DIR }}
       - run: terraform init
-        working-directory: ${{ env.WORKING_DIR }}
-      - run: terraform plan -var-file="terraform.tfvars" -out=tfplan
         working-directory: ${{ env.WORKING_DIR }}
       - run: terraform apply -auto-approve tfplan
         working-directory: ${{ env.WORKING_DIR }}
       - run: |
-          echo "Deployment complete!"
+          echo "Deployment complete."
           echo "Application URL: http://$(terraform output -raw alb_dns_name)"
         working-directory: ${{ env.WORKING_DIR }}
 
@@ -120,5 +135,5 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
       - run: terraform destroy -auto-approve
         working-directory: ${{ env.WORKING_DIR }}
-      - run: echo "Infrastructure destroyed!"
+      - run: echo "Infrastructure destroyed."
         working-directory: ${{ env.WORKING_DIR }}
