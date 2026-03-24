@@ -74,3 +74,4 @@ module "monitoring" {
 }
 
 # this is where we will add future modules like auto-scaling, RDS, etc.
+# mysql module root main.tf
