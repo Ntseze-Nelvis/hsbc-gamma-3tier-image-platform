@@ -15,8 +15,10 @@ on:
         default: 'apply'
         type: choice
         options:
+          - plan
           - apply
           - destroy
+          - import
 
 env:
   TF_VERSION: '1.5.0'
@@ -54,6 +56,10 @@ jobs:
     name: 'Plan'
     runs-on: ubuntu-latest
     needs: terraform-validate
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'plan')
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -74,10 +80,75 @@ jobs:
           name: tfplan
           path: ${{ env.WORKING_DIR }}/tfplan
 
+  terraform-import:
+    name: 'Import Existing Resources'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'import'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform init
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Import ALB
+        run: |
+          echo "Importing ALB..."
+          terraform import module.alb.aws_lb.this arn:aws:elasticloadbalancing:us-east-1:211125430491:loadbalancer/app/hsbc-gamma-v2-alb/12d89966a57e66da || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Import Target Groups
+        run: |
+          echo "Importing Target Groups..."
+          terraform import module.alb.aws_lb_target_group.web_tg arn:aws:elasticloadbalancing:us-east-1:211125430491:targetgroup/hsbc-gamma-v2-alb-tg/88b07b024f592fff || true
+          terraform import module.alb.aws_lb_target_group.app_tg arn:aws:elasticloadbalancing:us-east-1:211125430491:targetgroup/hsbc-gamma-v2-alb-app-tg/2e7701dbe7274bfb || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Import CloudWatch Log Groups
+        run: |
+          echo "Importing CloudWatch Log Groups..."
+          terraform import module.monitoring.aws_cloudwatch_log_group.web /hsbc-gamma/web || true
+          terraform import module.monitoring.aws_cloudwatch_log_group.app /hsbc-gamma/app || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Import IAM Roles
+        run: |
+          echo "Importing IAM roles..."
+          terraform import module.security.aws_iam_role.web_role hsbc-gamma-v2-web-role || true
+          terraform import module.security.aws_iam_role.app_role hsbc-gamma-v2-app-role || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Import IAM Policy
+        run: |
+          echo "Importing IAM policy..."
+          terraform import module.security.aws_iam_policy.app_s3_policy arn:aws:iam::211125430491:policy/hsbc-gamma-v2-app-s3-policy || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Import S3 Buckets (if needed)
+        run: |
+          echo "Importing S3 buckets..."
+          terraform import module.s3.aws_s3_bucket.raw hsbc-gamma-v2-raw || true
+          terraform import module.s3.aws_s3_bucket.processed hsbc-gamma-v2-processed || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Import KMS Alias
+        run: |
+          echo "Importing KMS alias..."
+          terraform import module.s3.aws_kms_alias.s3_kms_alias alias/hsbc-gamma-v2-s3 || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Verify State
+        run: |
+          echo "Current state:"
+          terraform state list
+        working-directory: ${{ env.WORKING_DIR }}
+      - run: |
+          echo "Import complete. Now run apply to finish deployment."
+        working-directory: ${{ env.WORKING_DIR }}
+
   terraform-apply:
     name: 'Apply'
     runs-on: ubuntu-latest
-    needs: terraform-plan
+    needs: [terraform-validate, terraform-plan]
     if: |
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' ||
