@@ -58,12 +58,14 @@ jobs:
       github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     steps:
-      - uses: actions/checkout@v4
+      # ✅ STEP 1: Configure AWS credentials FIRST
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      # ✅ STEP 2: Now Terraform can use credentials
+      - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
@@ -76,7 +78,6 @@ jobs:
         with:
           name: tfplan
           path: ${{ env.WORKING_DIR }}/tfplan
-      # ⚠️ NO STATE UPLOAD - State is already in S3!
 
   terraform-import:
     name: 'Import Existing Resources'
@@ -86,18 +87,19 @@ jobs:
       github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      # ✅ STEP 1: Configure AWS credentials FIRST
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      # ✅ STEP 2: Now Terraform can use credentials
+      - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
       - run: terraform init
         working-directory: ${{ env.WORKING_DIR }}
-        # ✅ State automatically loaded from S3!
       - name: Import ALB
         run: |
           echo "Importing ALB..."
@@ -137,7 +139,11 @@ jobs:
           echo "Importing KMS alias..."
           terraform import module.s3.aws_kms_alias.s3_kms_alias alias/hsbc-gamma-v2-s3 || true
         working-directory: ${{ env.WORKING_DIR }}
-      # ✅ No need to upload state - it's automatically saved to S3!
+      - name: Verify State
+        run: |
+          echo "Current state after import:"
+          terraform state list
+        working-directory: ${{ env.WORKING_DIR }}
 
   terraform-apply:
     name: 'Apply'
@@ -149,12 +155,14 @@ jobs:
        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'))
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      # ✅ STEP 1: Configure AWS credentials FIRST
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      # ✅ STEP 2: Now Terraform can use credentials
+      - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
@@ -165,10 +173,8 @@ jobs:
           path: ${{ env.WORKING_DIR }}
       - run: terraform init
         working-directory: ${{ env.WORKING_DIR }}
-        # ✅ State automatically loaded from S3!
       - run: terraform apply -auto-approve tfplan
         working-directory: ${{ env.WORKING_DIR }}
-        # ✅ State automatically saved to S3!
       - run: |
           echo "Deployment complete."
           echo "Application URL: http://$(terraform output -raw alb_dns_name)"
@@ -180,12 +186,14 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      # ✅ STEP 1: Configure AWS credentials FIRST
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      # ✅ STEP 2: Now Terraform can use credentials
+      - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
