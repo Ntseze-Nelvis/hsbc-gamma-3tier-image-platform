@@ -1,4 +1,4 @@
-# create a vpc
+﻿# create a vpc
 resource "aws_vpc" "cloudreality-vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -30,6 +30,7 @@ resource "aws_subnet" "public-subnet" {
     Name = "${var.project_name}-public-subnet-${count.index + 1}"
   }
 }
+
 # create public route table
 resource "aws_route_table" "public-rt" {
   vpc_id = aws_vpc.cloudreality-vpc.id
@@ -39,10 +40,10 @@ resource "aws_route_table" "public-rt" {
   }
 }
 
-# associate public subnet with route table
+# associate public subnet with route table - FIXED
 resource "aws_route_table_association" "public-rt-assoc" {
-  count          = length(aws_subnet.public-subnet)
-  subnet_id      = aws_subnet.public-subnet[count.index].id
+  for_each       = { for idx, subnet in aws_subnet.public-subnet : idx => subnet.id }
+  subnet_id      = each.value
   route_table_id = aws_route_table.public-rt.id
 }
 
@@ -74,10 +75,10 @@ resource "aws_route_table" "private-rt" {
   }
 }
 
-# associate private subnet with route table
+# associate private subnet with route table - FIXED
 resource "aws_route_table_association" "private-rt-assoc" {
-  count          = length(aws_subnet.private-subnet)
-  subnet_id      = aws_subnet.private-subnet[count.index].id
+  for_each       = { for idx, subnet in aws_subnet.private-subnet : idx => subnet.id }
+  subnet_id      = each.value
   route_table_id = aws_route_table.private-rt.id
 }
 
@@ -102,12 +103,9 @@ resource "aws_nat_gateway" "nat-gateway" {
   }
 }
 
-
 # create route to nat gateway in private route table
 resource "aws_route" "private-route" {
   route_table_id         = aws_route_table.private-rt.id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.nat-gateway.id
 }
-
-
