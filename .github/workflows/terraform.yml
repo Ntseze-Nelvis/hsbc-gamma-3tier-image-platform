@@ -57,7 +57,7 @@ jobs:
     if: |
       github.event_name == 'push' ||
       github.event_name == 'pull_request' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'plan')
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'))
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -81,12 +81,10 @@ jobs:
   terraform-import:
     name: 'Import Existing Resources'
     runs-on: ubuntu-latest
-    needs: terraform-validate
+    needs: [terraform-validate, terraform-plan]
     if: |
       github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
     environment: production
-    outputs:
-      import_status: ${{ steps.import.outputs.status }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -100,13 +98,9 @@ jobs:
       - run: terraform init
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import ALB
-        id: import
         run: |
-          echo "Checking if ALB exists..."
-          if terraform state list | grep -q "module.alb.aws_lb.this"; then
-            echo "ALB already in state, skipping import"
-          else
-            echo "Importing ALB..."
+          echo "Importing ALB..."
+          if ! terraform state list | grep -q "module.alb.aws_lb.this"; then
             terraform import module.alb.aws_lb.this arn:aws:elasticloadbalancing:us-east-1:211125430491:loadbalancer/app/hsbc-gamma-v2-alb/12d89966a57e66da || true
           fi
         working-directory: ${{ env.WORKING_DIR }}
@@ -169,13 +163,11 @@ jobs:
           echo "Current state after import:"
           terraform state list
         working-directory: ${{ env.WORKING_DIR }}
-      - run: echo "status=success" >> $GITHUB_OUTPUT
-        id: set_status
 
   terraform-apply:
     name: 'Apply'
     runs-on: ubuntu-latest
-    needs: [terraform-validate, terraform-plan, terraform-import]
+    needs: [terraform-plan, terraform-import]
     if: |
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' ||
