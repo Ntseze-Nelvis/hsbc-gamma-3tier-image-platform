@@ -1,5 +1,5 @@
 COMPLETE TERRAFORM CONFIGURATION
-Generated on: Tue, Mar 24, 2026  7:17:30 PM
+Generated on: Wed, Mar 25, 2026  1:32:06 PM
 ================================================================================
 
 ROOT MODULE FILES
@@ -52,6 +52,7 @@ module "alb" {
 
 # web module root main.tf
 module "web" {
+  project_name      = var.project_name
   source = "./modules/web"
 
   ami_id            = var.ami_id
@@ -63,6 +64,7 @@ module "web" {
 
 # app module root main.tf
 module "app" {
+  project_name      = var.project_name
   source = "./modules/app"
 
   ami_id                = var.ami_id
@@ -86,6 +88,7 @@ module "monitoring" {
 
 # this is where we will add future modules like auto-scaling, RDS, etc.
 # mysql module root main.tf
+
 
 
 ================================================================================
@@ -128,16 +131,12 @@ terraform {
       version = "~> 6.0"
     }
   }
+  # Backend configuration removed - will be provided via CLI
 }
 
-# Configure the AWS Provider
-# For GitHub Actions: uses AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY from environment
-# For local development: uncomment the profile line
 provider "aws" {
   region = var.aws_region
-  # profile = "cloudreality"  # Uncomment for local development
 }
-
 
 
 ================================================================================
@@ -266,15 +265,13 @@ variable "ami_id" {
 FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/terraform.tfvars
 ================================================================================
 
-############################
+﻿############################
 # Global / Project Settings
 ############################
 
-project_name = "hsbc-gamma-dev"
+project_name = "hsbc-gamma-v2"
 environment  = "dev"
 aws_region   = "us-east-1"
-#profile      = "cloudreality"
-
 
 ############################
 # Networking (VPC)
@@ -297,7 +294,6 @@ private_subnets = [
   "10.0.4.0/24"
 ]
 
-
 ############################
 # Application Ports
 ############################
@@ -305,27 +301,23 @@ private_subnets = [
 web_port = 80
 app_port = 5000
 
+############################
+# S3 Buckets - Unique names
+############################
+
+raw_images_bucket_name       = "hsbc-gamma-v2-raw"
+processed_images_bucket_name = "hsbc-gamma-v2-processed"
 
 ############################
-# S3 Buckets (Used by IAM)
-############################
-
-raw_images_bucket_name       = "hsbc-gamma-dev-raw-images"
-processed_images_bucket_name = "hsbc-gamma-dev-processed-images"
-
-
-############################
-# EC2 Configuration (Future)
+# EC2 Configuration
 ############################
 
 web_instance_type = "t3.micro"
 app_instance_type = "t3.micro"
-
-key_pair_name = "hsbc-gamma-dev-key"
-
+key_pair_name     = "hsbc-gamma-v2-key"
 
 ############################
-# Auto Scaling (Optional)
+# Auto Scaling
 ############################
 
 web_desired_capacity = 2
@@ -336,7 +328,6 @@ app_desired_capacity = 2
 app_min_size         = 1
 app_max_size         = 3
 
-
 ############################
 # Logging & Monitoring
 ############################
@@ -344,9 +335,9 @@ app_max_size         = 3
 enable_cloudwatch_logs = true
 
 ############################
-# AMI Configuration (Future)
-ami_id = "ami-02dfbd4ff395f2a1b" # Amazon Linux 3 AMI (HVM), SSD Volume Type - us-east-1
-############################
+# AMI Configuration for us-east-1
+# Amazon Linux 2023 AMI
+ami_id = "ami-02dfbd4ff395f2a1b"
 
 
 
@@ -358,7 +349,7 @@ MODULE: vpc
 FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/vpc/main.tf
 ================================================================================
 
-# create a vpc
+﻿# create a vpc
 resource "aws_vpc" "cloudreality-vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -390,6 +381,7 @@ resource "aws_subnet" "public-subnet" {
     Name = "${var.project_name}-public-subnet-${count.index + 1}"
   }
 }
+
 # create public route table
 resource "aws_route_table" "public-rt" {
   vpc_id = aws_vpc.cloudreality-vpc.id
@@ -399,10 +391,10 @@ resource "aws_route_table" "public-rt" {
   }
 }
 
-# associate public subnet with route table
+# associate public subnet with route table - FIXED
 resource "aws_route_table_association" "public-rt-assoc" {
-  count          = length(aws_subnet.public-subnet)
-  subnet_id      = aws_subnet.public-subnet[count.index].id
+  for_each       = { for idx, subnet in aws_subnet.public-subnet : idx => subnet.id }
+  subnet_id      = each.value
   route_table_id = aws_route_table.public-rt.id
 }
 
@@ -434,10 +426,10 @@ resource "aws_route_table" "private-rt" {
   }
 }
 
-# associate private subnet with route table
+# associate private subnet with route table - FIXED
 resource "aws_route_table_association" "private-rt-assoc" {
-  count          = length(aws_subnet.private-subnet)
-  subnet_id      = aws_subnet.private-subnet[count.index].id
+  for_each       = { for idx, subnet in aws_subnet.private-subnet : idx => subnet.id }
+  subnet_id      = each.value
   route_table_id = aws_route_table.private-rt.id
 }
 
@@ -462,15 +454,12 @@ resource "aws_nat_gateway" "nat-gateway" {
   }
 }
 
-
 # create route to nat gateway in private route table
 resource "aws_route" "private-route" {
   route_table_id         = aws_route_table.private-rt.id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.nat-gateway.id
 }
-
-
 
 
 
@@ -1301,12 +1290,12 @@ MODULE: web
 FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/web/asg.tf
 ================================================================================
 
-resource "aws_autoscaling_group" "web_asg" {
-  name                = "web-asg"
+﻿resource "aws_autoscaling_group" "web_asg" {
+  name                = "${var.project_name}-web-asg"
   min_size            = 2
   max_size            = 4
   desired_capacity    = 2
-  vpc_zone_identifier = var.public_subnet_ids # Changed from var.aws_vpc.cloudreality-vpc.id
+  vpc_zone_identifier = var.public_subnet_ids
 
   target_group_arns = [var.target_group_arn]
 
@@ -1317,10 +1306,11 @@ resource "aws_autoscaling_group" "web_asg" {
 
   tag {
     key                 = "Name"
-    value               = "web-asg-instance"
+    value               = "${var.project_name}-web-instance"
     propagate_at_launch = true
   }
 }
+
 
 
 ================================================================================
@@ -1388,6 +1378,11 @@ variable "target_group_arn" {
 }
 
 
+
+variable "project_name" {
+  description = "Project name for naming resources"
+  type        = string
+}
 
 
 
@@ -1574,15 +1569,13 @@ MODULE: app
 FILE: /c/Users/NTSEZE NELVIS/Desktop/my_Devops-projects/terraform/end-to-end-3tier-app-deployment/terraform-3tier-image-platform/modules/app/asg.tf
 ================================================================================
 
-resource "aws_autoscaling_group" "app_asg" {
-  name             = "app-asg"
-  min_size         = 2
-  max_size         = 4
-  desired_capacity = 2
-
+﻿resource "aws_autoscaling_group" "app_asg" {
+  name                = "${var.project_name}-app-asg"
+  min_size            = 2
+  max_size            = 4
+  desired_capacity    = 2
   vpc_zone_identifier = var.private_subnet_ids
 
-  # NEW: Add target group attachment
   target_group_arns = [var.target_group_arn]
 
   launch_template {
@@ -1592,10 +1585,11 @@ resource "aws_autoscaling_group" "app_asg" {
 
   tag {
     key                 = "Name"
-    value               = "app-asg-instance"
+    value               = "${var.project_name}-app-instance"
     propagate_at_launch = true
   }
 }
+
 
 
 ================================================================================
@@ -1683,6 +1677,11 @@ variable "target_group_arn" {
   description = "ARN of the app target group"
   type        = string
 }
+variable "project_name" {
+  description = "Project name for naming resources"
+  type        = string
+}
+
 
 
 ----------------------------------------
