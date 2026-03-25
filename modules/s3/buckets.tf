@@ -34,6 +34,8 @@ resource "aws_s3_bucket_public_access_block" "processed" {
   restrict_public_buckets = true
 }
 
+# kms key for S3 encryption
+
 
 
 
