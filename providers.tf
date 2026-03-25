@@ -5,12 +5,17 @@ terraform {
       version = "~> 6.0"
     }
   }
+  
+  # ✅ CORRECT: Remote state storage
+  backend "s3" {
+    bucket         = "hsbc-gamma-dev-terraform-state"
+    key            = "3tier-image-platform/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+  }
 }
 
-# Configure the AWS Provider
-# For GitHub Actions: uses AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY from environment
-# For local development: uncomment the profile line
 provider "aws" {
   region = var.aws_region
-  # profile = "cloudreality"  # Uncomment for local development
 }
