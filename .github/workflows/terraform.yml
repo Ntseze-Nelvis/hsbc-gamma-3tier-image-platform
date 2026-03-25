@@ -58,20 +58,25 @@ jobs:
       github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     steps:
-      # ✅ STEP 1: Configure AWS credentials FIRST
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-      # ✅ STEP 2: Now Terraform can use credentials
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-      - run: terraform init
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
+            -backend-config="key=3tier-image-platform/terraform.tfstate" \
+            -backend-config="region=us-east-1"
         working-directory: ${{ env.WORKING_DIR }}
-      - run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+      - name: Terraform Plan
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
         working-directory: ${{ env.WORKING_DIR }}
       - name: Upload Plan
         uses: actions/upload-artifact@v4
@@ -87,18 +92,22 @@ jobs:
       github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
     environment: production
     steps:
-      # ✅ STEP 1: Configure AWS credentials FIRST
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-      # ✅ STEP 2: Now Terraform can use credentials
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-      - run: terraform init
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
+            -backend-config="key=3tier-image-platform/terraform.tfstate" \
+            -backend-config="region=us-east-1"
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import ALB
         run: |
@@ -155,13 +164,12 @@ jobs:
        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'))
     environment: production
     steps:
-      # ✅ STEP 1: Configure AWS credentials FIRST
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-      # ✅ STEP 2: Now Terraform can use credentials
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -171,11 +179,18 @@ jobs:
         with:
           name: tfplan
           path: ${{ env.WORKING_DIR }}
-      - run: terraform init
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
+            -backend-config="key=3tier-image-platform/terraform.tfstate" \
+            -backend-config="region=us-east-1"
         working-directory: ${{ env.WORKING_DIR }}
-      - run: terraform apply -auto-approve tfplan
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
         working-directory: ${{ env.WORKING_DIR }}
-      - run: |
+      - name: Get Application URL
+        run: |
           echo "Deployment complete."
           echo "Application URL: http://$(terraform output -raw alb_dns_name)"
         working-directory: ${{ env.WORKING_DIR }}
@@ -186,26 +201,33 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
     environment: production
     steps:
-      # ✅ STEP 1: Configure AWS credentials FIRST
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-      # ✅ STEP 2: Now Terraform can use credentials
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-      - run: terraform init
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
+            -backend-config="key=3tier-image-platform/terraform.tfstate" \
+            -backend-config="region=us-east-1"
         working-directory: ${{ env.WORKING_DIR }}
-      - run: |
+      - name: Empty S3 Buckets
+        run: |
           echo "Emptying S3 buckets..."
           for bucket in $(terraform state list | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do
             aws s3 rm "s3://$bucket" --recursive || true
           done
         working-directory: ${{ env.WORKING_DIR }}
-      - run: terraform destroy -auto-approve
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
         working-directory: ${{ env.WORKING_DIR }}
-      - run: echo "Infrastructure destroyed."
+      - name: Complete
+        run: echo "Infrastructure destroyed."
         working-directory: ${{ env.WORKING_DIR }}
