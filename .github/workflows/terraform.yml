@@ -1,22 +1,18 @@
 name: 'Terraform CI/CD'
 
 on:
-  # Remove or comment out the push trigger to prevent automatic runs
-  # push:
-  #   branches:
-  #     - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:           # ← This is the manual trigger
+  workflow_dispatch:
     inputs:
       action:
         description: 'Action to perform'
         required: true
-        default: 'apply'
+        default: 'deploy-full'
         type: choice
         options:
-          - apply
+          - deploy-base
+          - import-resources
+          - import-alb
+          - deploy-full
           - destroy
 
 env:
@@ -50,46 +46,11 @@ jobs:
       - run: terraform validate
         working-directory: ${{ env.WORKING_DIR }}
 
-  terraform-plan:
-    name: 'Plan'
+  terraform-deploy-base:
+    name: 'Step 1: Deploy Base Infrastructure'
     runs-on: ubuntu-latest
     needs: terraform-validate
-    if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-      - name: Terraform Init
-        run: |
-          terraform init \
-            -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
-            -backend-config="key=3tier-image-platform/terraform.tfstate" \
-            -backend-config="region=us-east-1"
-        working-directory: ${{ env.WORKING_DIR }}
-      - name: Terraform Plan
-        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
-        working-directory: ${{ env.WORKING_DIR }}
-      - name: Upload Plan
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: ${{ env.WORKING_DIR }}/tfplan
-
-  terraform-import:
-    name: 'Import Existing Resources'
-    runs-on: ubuntu-latest
-    needs: terraform-plan
-    if: |
-      github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
+    if: github.event.inputs.action == 'deploy-base' || github.event.inputs.action == 'deploy-full'
     environment: production
     steps:
       - name: Configure AWS credentials
@@ -109,16 +70,88 @@ jobs:
             -backend-config="key=3tier-image-platform/terraform.tfstate" \
             -backend-config="region=us-east-1"
         working-directory: ${{ env.WORKING_DIR }}
-      - name: Import ALB
+      - name: Deploy Base Infrastructure
+        run: |
+          terraform apply -auto-approve \
+            -target=module.vpc \
+            -target=module.security \
+            -target=module.s3
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Verify Base State
+        run: |
+          echo "Base infrastructure deployed"
+          terraform state list
+        working-directory: ${{ env.WORKING_DIR }}
+
+  terraform-import-alb:
+    name: 'Step 2: Import ALB (Critical for for_each)'
+    runs-on: ubuntu-latest
+    needs: terraform-deploy-base
+    if: github.event.inputs.action == 'import-alb' || github.event.inputs.action == 'deploy-full'
+    environment: production
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
+            -backend-config="key=3tier-image-platform/terraform.tfstate" \
+            -backend-config="region=us-east-1"
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Import ALB (First - critical for dependencies)
         run: |
           echo "Importing ALB..."
           terraform import module.alb.aws_lb.this arn:aws:elasticloadbalancing:us-east-1:211125430491:loadbalancer/app/hsbc-gamma-v2-alb/12d89966a57e66da || true
         working-directory: ${{ env.WORKING_DIR }}
-      - name: Import Target Groups
+      - name: Import Target Groups (Depends on ALB)
         run: |
           echo "Importing Target Groups..."
           terraform import module.alb.aws_lb_target_group.web_tg arn:aws:elasticloadbalancing:us-east-1:211125430491:targetgroup/hsbc-gamma-v2-alb-tg/88b07b024f592fff || true
           terraform import module.alb.aws_lb_target_group.app_tg arn:aws:elasticloadbalancing:us-east-1:211125430491:targetgroup/hsbc-gamma-v2-alb-app-tg/2e7701dbe7274bfb || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: First Apply to Resolve for_each
+        run: |
+          echo "First apply to resolve for_each dependencies..."
+          terraform apply -auto-approve || true
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Second Apply to Converge
+        run: |
+          echo "Second apply to fully converge..."
+          terraform apply -auto-approve
+        working-directory: ${{ env.WORKING_DIR }}
+
+  terraform-import-remaining:
+    name: 'Step 3: Import Remaining Resources'
+    runs-on: ubuntu-latest
+    needs: terraform-import-alb
+    if: github.event.inputs.action == 'import-resources' || github.event.inputs.action == 'deploy-full'
+    environment: production
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
+            -backend-config="key=3tier-image-platform/terraform.tfstate" \
+            -backend-config="region=us-east-1"
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import CloudWatch Log Groups
         run: |
@@ -148,18 +181,17 @@ jobs:
           echo "Importing KMS alias..."
           terraform import module.s3.aws_kms_alias.s3_kms_alias alias/hsbc-gamma-v2-s3 || true
         working-directory: ${{ env.WORKING_DIR }}
-      - name: Verify State
+      - name: Apply to Converge
         run: |
-          echo "Current state after import:"
-          terraform state list
+          echo "Applying to converge all resources..."
+          terraform apply -auto-approve
         working-directory: ${{ env.WORKING_DIR }}
 
-  terraform-apply:
-    name: 'Apply'
+  terraform-deploy-full:
+    name: 'Step 4: Deploy Full Infrastructure'
     runs-on: ubuntu-latest
-    needs: [terraform-plan, terraform-import]
-    if: |
-      github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
+    needs: [terraform-deploy-base, terraform-import-alb, terraform-import-remaining]
+    if: github.event.inputs.action == 'deploy-full'
     environment: production
     steps:
       - name: Configure AWS credentials
@@ -172,11 +204,6 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-      - name: Download Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: ${{ env.WORKING_DIR }}
       - name: Terraform Init
         run: |
           terraform init \
@@ -184,8 +211,8 @@ jobs:
             -backend-config="key=3tier-image-platform/terraform.tfstate" \
             -backend-config="region=us-east-1"
         working-directory: ${{ env.WORKING_DIR }}
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+      - name: Apply Full Infrastructure
+        run: terraform apply -auto-approve
         working-directory: ${{ env.WORKING_DIR }}
       - name: Get Application URL
         run: |
@@ -196,7 +223,7 @@ jobs:
   terraform-destroy:
     name: 'Destroy'
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+    if: github.event.inputs.action == 'destroy'
     environment: production
     steps:
       - name: Configure AWS credentials
@@ -225,7 +252,4 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
-        working-directory: ${{ env.WORKING_DIR }}
-      - name: Complete
-        run: echo "Infrastructure destroyed."
         working-directory: ${{ env.WORKING_DIR }}
