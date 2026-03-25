@@ -34,7 +34,6 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
       - run: |
-          # Format only .tf files, exclude .tfvars
           find . -name "*.tf" -exec terraform fmt -check {} \;
         working-directory: ${{ env.WORKING_DIR }}
 
@@ -85,6 +84,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'import'
     environment: production
+    outputs:
+      import_status: ${{ steps.import.outputs.status }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -98,6 +99,7 @@ jobs:
       - run: terraform init
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import ALB
+        id: import
         run: |
           echo "Importing ALB..."
           terraform import module.alb.aws_lb.this arn:aws:elasticloadbalancing:us-east-1:211125430491:loadbalancer/app/hsbc-gamma-v2-alb/12d89966a57e66da || true
@@ -125,7 +127,7 @@ jobs:
           echo "Importing IAM policy..."
           terraform import module.security.aws_iam_policy.app_s3_policy arn:aws:iam::211125430491:policy/hsbc-gamma-v2-app-s3-policy || true
         working-directory: ${{ env.WORKING_DIR }}
-      - name: Import S3 Buckets (if needed)
+      - name: Import S3 Buckets
         run: |
           echo "Importing S3 buckets..."
           terraform import module.s3.aws_s3_bucket.raw hsbc-gamma-v2-raw || true
@@ -141,8 +143,8 @@ jobs:
           echo "Current state:"
           terraform state list
         working-directory: ${{ env.WORKING_DIR }}
-      - run: |
-          echo "Import complete. Now run apply to finish deployment."
+      - run: echo "status=success" >> $GITHUB_OUTPUT
+        id: set_status
         working-directory: ${{ env.WORKING_DIR }}
 
   terraform-apply:
@@ -150,9 +152,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [terraform-validate, terraform-plan]
     if: |
-      github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' ||
-       (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'))
+      (github.ref == 'refs/heads/main' &&
+       (github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'))) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'import' && needs.terraform-import.result == 'success')
     environment: production
     steps:
       - uses: actions/checkout@v4
