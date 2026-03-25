@@ -76,6 +76,11 @@ jobs:
         with:
           name: tfplan
           path: ${{ env.WORKING_DIR }}/tfplan
+      - name: Upload Terraform State
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state
+          path: ${{ env.WORKING_DIR }}/terraform.tfstate*
 
   terraform-import:
     name: 'Import Existing Resources'
@@ -94,69 +99,81 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+      - name: Download Terraform State
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-state
+          path: ${{ env.WORKING_DIR }}
       - run: terraform init
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import ALB
         run: |
           echo "Importing ALB..."
-          if ! terraform state list | grep -q "module.alb.aws_lb.this"; then
+          if ! terraform state list | grep -q "module.alb.aws_lb.this" 2>/dev/null; then
             terraform import module.alb.aws_lb.this arn:aws:elasticloadbalancing:us-east-1:211125430491:loadbalancer/app/hsbc-gamma-v2-alb/12d89966a57e66da || true
+          else
+            echo "ALB already in state"
           fi
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import Target Groups
         run: |
           echo "Importing Target Groups..."
-          if ! terraform state list | grep -q "module.alb.aws_lb_target_group.web_tg"; then
+          if ! terraform state list | grep -q "module.alb.aws_lb_target_group.web_tg" 2>/dev/null; then
             terraform import module.alb.aws_lb_target_group.web_tg arn:aws:elasticloadbalancing:us-east-1:211125430491:targetgroup/hsbc-gamma-v2-alb-tg/88b07b024f592fff || true
           fi
-          if ! terraform state list | grep -q "module.alb.aws_lb_target_group.app_tg"; then
+          if ! terraform state list | grep -q "module.alb.aws_lb_target_group.app_tg" 2>/dev/null; then
             terraform import module.alb.aws_lb_target_group.app_tg arn:aws:elasticloadbalancing:us-east-1:211125430491:targetgroup/hsbc-gamma-v2-alb-app-tg/2e7701dbe7274bfb || true
           fi
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import CloudWatch Log Groups
         run: |
           echo "Importing CloudWatch Log Groups..."
-          if ! terraform state list | grep -q "module.monitoring.aws_cloudwatch_log_group.web"; then
+          if ! terraform state list | grep -q "module.monitoring.aws_cloudwatch_log_group.web" 2>/dev/null; then
             terraform import module.monitoring.aws_cloudwatch_log_group.web /hsbc-gamma/web || true
           fi
-          if ! terraform state list | grep -q "module.monitoring.aws_cloudwatch_log_group.app"; then
+          if ! terraform state list | grep -q "module.monitoring.aws_cloudwatch_log_group.app" 2>/dev/null; then
             terraform import module.monitoring.aws_cloudwatch_log_group.app /hsbc-gamma/app || true
           fi
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import IAM Roles
         run: |
           echo "Importing IAM roles..."
-          if ! terraform state list | grep -q "module.security.aws_iam_role.web_role"; then
+          if ! terraform state list | grep -q "module.security.aws_iam_role.web_role" 2>/dev/null; then
             terraform import module.security.aws_iam_role.web_role hsbc-gamma-v2-web-role || true
           fi
-          if ! terraform state list | grep -q "module.security.aws_iam_role.app_role"; then
+          if ! terraform state list | grep -q "module.security.aws_iam_role.app_role" 2>/dev/null; then
             terraform import module.security.aws_iam_role.app_role hsbc-gamma-v2-app-role || true
           fi
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import IAM Policy
         run: |
           echo "Importing IAM policy..."
-          if ! terraform state list | grep -q "module.security.aws_iam_policy.app_s3_policy"; then
+          if ! terraform state list | grep -q "module.security.aws_iam_policy.app_s3_policy" 2>/dev/null; then
             terraform import module.security.aws_iam_policy.app_s3_policy arn:aws:iam::211125430491:policy/hsbc-gamma-v2-app-s3-policy || true
           fi
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import S3 Buckets
         run: |
           echo "Importing S3 buckets..."
-          if ! terraform state list | grep -q "module.s3.aws_s3_bucket.raw"; then
+          if ! terraform state list | grep -q "module.s3.aws_s3_bucket.raw" 2>/dev/null; then
             terraform import module.s3.aws_s3_bucket.raw hsbc-gamma-v2-raw || true
           fi
-          if ! terraform state list | grep -q "module.s3.aws_s3_bucket.processed"; then
+          if ! terraform state list | grep -q "module.s3.aws_s3_bucket.processed" 2>/dev/null; then
             terraform import module.s3.aws_s3_bucket.processed hsbc-gamma-v2-processed || true
           fi
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import KMS Alias
         run: |
           echo "Importing KMS alias..."
-          if ! terraform state list | grep -q "module.s3.aws_kms_alias.s3_kms_alias"; then
+          if ! terraform state list | grep -q "module.s3.aws_kms_alias.s3_kms_alias" 2>/dev/null; then
             terraform import module.s3.aws_kms_alias.s3_kms_alias alias/hsbc-gamma-v2-s3 || true
           fi
         working-directory: ${{ env.WORKING_DIR }}
+      - name: Upload Updated State
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-state-updated
+          path: ${{ env.WORKING_DIR }}/terraform.tfstate*
       - name: Verify State
         run: |
           echo "Current state after import:"
@@ -186,6 +203,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: tfplan
+          path: ${{ env.WORKING_DIR }}
+      - name: Download Updated State
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-state-updated
           path: ${{ env.WORKING_DIR }}
       - run: terraform init
         working-directory: ${{ env.WORKING_DIR }}
