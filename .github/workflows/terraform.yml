@@ -14,10 +14,13 @@ on:
           - import-alb
           - deploy-full
           - destroy
+          - cleanup-failure
 
 env:
   TF_VERSION: '1.5.0'
   WORKING_DIR: '.'
+  TF_VAR_project_name: 'hsbc-gamma-v2'
+  TF_VAR_aws_region: 'us-east-1'
 
 jobs:
   terraform-fmt:
@@ -107,16 +110,29 @@ jobs:
             -backend-config="key=3tier-image-platform/terraform.tfstate" \
             -backend-config="region=us-east-1"
         working-directory: ${{ env.WORKING_DIR }}
-      - name: Import ALB (First - critical for dependencies)
+      - name: Get ALB ARN
+        id: get_alb
+        run: |
+          ALB_ARN=$(aws elbv2 describe-load-balancers --region us-east-1 --profile cloudreality --query "LoadBalancers[?contains(LoadBalancerName, 'hsbc-gamma-v2')].LoadBalancerArn" --output text)
+          echo "ALB_ARN=$ALB_ARN" >> $GITHUB_ENV
+          echo "Found ALB: $ALB_ARN"
+        working-directory: ${{ env.WORKING_DIR }}
+        continue-on-error: true
+      - name: Import ALB
         run: |
           echo "Importing ALB..."
-          terraform import module.alb.aws_lb.this arn:aws:elasticloadbalancing:us-east-1:211125430491:loadbalancer/app/hsbc-gamma-v2-alb/12d89966a57e66da || true
+          terraform import module.alb.aws_lb.this ${{ env.ALB_ARN }} || true
         working-directory: ${{ env.WORKING_DIR }}
-      - name: Import Target Groups (Depends on ALB)
+      - name: Import Target Groups
         run: |
           echo "Importing Target Groups..."
-          terraform import module.alb.aws_lb_target_group.web_tg arn:aws:elasticloadbalancing:us-east-1:211125430491:targetgroup/hsbc-gamma-v2-alb-tg/88b07b024f592fff || true
-          terraform import module.alb.aws_lb_target_group.app_tg arn:aws:elasticloadbalancing:us-east-1:211125430491:targetgroup/hsbc-gamma-v2-alb-app-tg/2e7701dbe7274bfb || true
+          for tg in $(aws elbv2 describe-target-groups --region us-east-1 --profile cloudreality --query "TargetGroups[?contains(TargetGroupName, 'hsbc-gamma-v2')].TargetGroupArn" --output text); do
+            if [[ $tg == *"-app-tg"* ]]; then
+              terraform import module.alb.aws_lb_target_group.app_tg $tg || true
+            else
+              terraform import module.alb.aws_lb_target_group.web_tg $tg || true
+            fi
+          done
         working-directory: ${{ env.WORKING_DIR }}
       - name: First Apply to Resolve for_each
         run: |
@@ -162,24 +178,24 @@ jobs:
       - name: Import IAM Roles
         run: |
           echo "Importing IAM roles..."
-          terraform import module.security.aws_iam_role.web_role hsbc-gamma-v2-web-role || true
-          terraform import module.security.aws_iam_role.app_role hsbc-gamma-v2-app-role || true
+          terraform import module.security.aws_iam_role.web_role ${TF_VAR_project_name}-web-role || true
+          terraform import module.security.aws_iam_role.app_role ${TF_VAR_project_name}-app-role || true
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import IAM Policy
         run: |
           echo "Importing IAM policy..."
-          terraform import module.security.aws_iam_policy.app_s3_policy arn:aws:iam::211125430491:policy/hsbc-gamma-v2-app-s3-policy || true
+          terraform import module.security.aws_iam_policy.app_s3_policy arn:aws:iam::211125430491:policy/${TF_VAR_project_name}-app-s3-policy || true
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import S3 Buckets
         run: |
           echo "Importing S3 buckets..."
-          terraform import module.s3.aws_s3_bucket.raw hsbc-gamma-v2-raw || true
-          terraform import module.s3.aws_s3_bucket.processed hsbc-gamma-v2-processed || true
+          terraform import module.s3.aws_s3_bucket.raw ${TF_VAR_project_name}-raw || true
+          terraform import module.s3.aws_s3_bucket.processed ${TF_VAR_project_name}-processed || true
         working-directory: ${{ env.WORKING_DIR }}
       - name: Import KMS Alias
         run: |
           echo "Importing KMS alias..."
-          terraform import module.s3.aws_kms_alias.s3_kms_alias alias/hsbc-gamma-v2-s3 || true
+          terraform import module.s3.aws_kms_alias.s3_kms_alias alias/${TF_VAR_project_name}-s3 || true
         working-directory: ${{ env.WORKING_DIR }}
       - name: Apply to Converge
         run: |
@@ -253,3 +269,72 @@ jobs:
       - name: Terraform Destroy
         run: terraform destroy -auto-approve
         working-directory: ${{ env.WORKING_DIR }}
+
+  cleanup-on-failure:
+    name: '🧹 Cleanup on Failure'
+    runs-on: ubuntu-latest
+    needs: [terraform-deploy-full]
+    if: always() && (needs.terraform-deploy-full.result == 'failure' || github.event.inputs.action == 'cleanup-failure')
+    environment: production
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=hsbc-gamma-dev-terraform-state" \
+            -backend-config="key=3tier-image-platform/terraform.tfstate" \
+            -backend-config="region=us-east-1"
+        working-directory: ${{ env.WORKING_DIR }}
+      - name: Empty S3 Buckets
+        run: |
+          echo "Emptying S3 buckets..."
+          for bucket in $(terraform state list | grep aws_s3_bucket | sed 's/.*\.\(.*\)/\1/'); do
+            aws s3 rm "s3://$bucket" --recursive || true
+          done
+        working-directory: ${{ env.WORKING_DIR }}
+        continue-on-error: true
+      - name: Destroy All Resources
+        run: |
+          echo "⚠️  Deployment failed! Destroying all resources..."
+          terraform destroy -auto-approve
+        working-directory: ${{ env.WORKING_DIR }}
+        continue-on-error: true
+      - name: Cleanup Remaining Resources
+        run: |
+          echo "Cleaning up any remaining resources..."
+          VPC_NAME="${TF_VAR_project_name}-vpc"
+          VPC_ID=$(aws ec2 describe-vpcs --filters "Name=tag:Name,Values=$VPC_NAME" --query 'Vpcs[0].VpcId' --output text 2>/dev/null || echo "")
+          
+          if [ -n "$VPC_ID" ] && [ "$VPC_ID" != "None" ]; then
+            echo "Cleaning up VPC: $VPC_ID"
+            for NAT in $(aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=$VPC_ID" --query 'NatGateways[].NatGatewayId' --output text 2>/dev/null); do
+              aws ec2 delete-nat-gateway --nat-gateway-id $NAT 2>/dev/null || true
+            done
+            sleep 30
+            
+            for ENI in $(aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=$VPC_ID" --query 'NetworkInterfaces[].NetworkInterfaceId' --output text 2>/dev/null); do
+              aws ec2 delete-network-interface --network-interface-id $ENI 2>/dev/null || true
+            done
+            
+            for SUBNET in $(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[].SubnetId' --output text 2>/dev/null); do
+              aws ec2 delete-subnet --subnet-id $SUBNET 2>/dev/null || true
+            done
+          fi
+          
+          # Release Elastic IPs
+          for EIP in $(aws ec2 describe-addresses --query 'Addresses[?AssociationId==`null`].AllocationId' --output text 2>/dev/null); do
+            aws ec2 release-address --allocation-id $EIP 2>/dev/null || true
+          done
+        working-directory: ${{ env.WORKING_DIR }}
+        continue-on-error: true
+      - name: Cleanup Complete
+        run: echo "✅ Cleanup completed after failed deployment!"
